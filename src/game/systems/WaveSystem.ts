@@ -1,17 +1,18 @@
 import { Container, Assets, Texture } from 'pixi.js'
-import { waves, WaveEntry } from '../data/waves'
+import { StageConfig, WaveEntry } from '../data/stages'
 import { ENEMIES } from '../data/enemies'
-import { Enemy, EnemyPath } from '../entities/Enemy'
+import { Enemy } from '../entities/Enemy'
 import { BulletPool } from '../entities/BulletPool'
 
-const POOL_SIZE = 50
-const BOSS_TRIGGER_TIME = 42
+const POOL_SIZE = 60
 
 export class WaveSystem {
   private enemies: Enemy[] = []
   private textures = new Map<string, Texture>()
   private elapsed = 0
   private nextWaveIdx = 0
+  private waves: WaveEntry[] = []
+  private bossTriggerTime = 42
   bossTriggered = false
 
   constructor(private container: Container) {}
@@ -27,27 +28,39 @@ export class WaveSystem {
     }
   }
 
+  loadStage(cfg: StageConfig) {
+    this.waves = cfg.waves
+    this.bossTriggerTime = cfg.bossTriggerTime
+    this.elapsed = 0
+    this.nextWaveIdx = 0
+    this.bossTriggered = false
+    this.dismissAll()
+  }
+
   private spawnWave(entry: WaveEntry, playerX: number) {
     const def = ENEMIES[entry.type]
     if (!def) return
-    const tex = this.textures.get(entry.type)!
+    const tex = this.textures.get(entry.type)
+    if (!tex) return
+
     const positions = formation(entry.formation, entry.count, 480)
     for (let i = 0; i < entry.count; i++) {
       const enemy = this.enemies.find((e) => !e.active)
       if (!enemy) break
       const [x, y] = positions[i]
-      enemy.activate(x, y, def, entry.path as EnemyPath, playerX, tex)
+      enemy.activate(x, y, def, entry.path, playerX, tex)
     }
   }
 
+  // Returns true once when boss should spawn
   update(dt: number, enemyBullets: BulletPool, playerX: number, stageH: number): boolean {
     this.elapsed += dt
 
     while (
-      this.nextWaveIdx < waves.length &&
-      this.elapsed >= waves[this.nextWaveIdx].time
+      this.nextWaveIdx < this.waves.length &&
+      this.elapsed >= this.waves[this.nextWaveIdx].time
     ) {
-      this.spawnWave(waves[this.nextWaveIdx], playerX)
+      this.spawnWave(this.waves[this.nextWaveIdx], playerX)
       this.nextWaveIdx++
     }
 
@@ -55,8 +68,7 @@ export class WaveSystem {
       if (e.active) e.update(dt, enemyBullets, stageH, playerX)
     }
 
-    // signal boss spawn when all normal waves done + time threshold met
-    if (!this.bossTriggered && this.elapsed >= BOSS_TRIGGER_TIME) {
+    if (!this.bossTriggered && this.elapsed >= this.bossTriggerTime) {
       this.bossTriggered = true
       return true
     }
@@ -69,13 +81,6 @@ export class WaveSystem {
 
   dismissAll() {
     for (const e of this.enemies) e.deactivate()
-  }
-
-  reset() {
-    this.elapsed = 0
-    this.nextWaveIdx = 0
-    this.bossTriggered = false
-    this.dismissAll()
   }
 }
 

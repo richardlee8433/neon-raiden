@@ -4,6 +4,7 @@ import { HUD } from './ui/HUD'
 import { TitleScreen } from './ui/TitleScreen'
 import { GameOverScreen } from './ui/GameOverScreen'
 import { StageClearScreen } from './ui/StageClearScreen'
+import { StageAnnouncement } from './ui/StageAnnouncement'
 import { useGameStore } from './store/gameStore'
 
 export default function App() {
@@ -16,10 +17,7 @@ export default function App() {
     const game = new GameApp(canvasRef.current)
     gameRef.current = game
     game.init().catch(console.error)
-    return () => {
-      game.destroy()
-      gameRef.current = null
-    }
+    return () => { game.destroy(); gameRef.current = null }
   }, [])
 
   return (
@@ -29,6 +27,7 @@ export default function App() {
       {phase === 'title'      && <TitleScreen />}
       {phase === 'gameover'   && <GameOverScreen />}
       {phase === 'stageclear' && <StageClearScreen />}
+      {phase === 'advancing'  && <StageAnnouncement />}
     </div>
   )
 }

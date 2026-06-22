@@ -1,10 +1,25 @@
 import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
 import { Actions } from '../systems/InputSystem'
 import { BulletPool } from './BulletPool'
+import { gameStore } from '../../store/gameStore'
 
 const SPEED = 300
-const FIRE_RATE = 0.12  // seconds between shots
-const BULLET_SPEED = 600
+const BULLET_SPEED = 620
+
+// Each entry is an array of [vx_norm, vy_norm] direction vectors per power level.
+// vy is always negative (upward). vx gives the spread angle.
+//   sin(10°)≈0.17  sin(15°)≈0.26  sin(20°)≈0.34
+//   cos(10°)≈0.98  cos(15°)≈0.97  cos(20°)≈0.94
+const SHOT_PATTERNS: [number, number][][] = [
+  [[0, -1]],                                                          // power 0 – 1 shot
+  [[-0.17, -0.98], [0.17, -0.98]],                                    // power 1 – 2 shots
+  [[-0.26, -0.97], [0, -1], [0.26, -0.97]],                          // power 2 – 3 shots
+  [[-0.34, -0.94], [-0.12, -0.99], [0.12, -0.99], [0.34, -0.94]],   // power 3 – 4 shots
+  [[-0.34, -0.94], [-0.17, -0.98], [0, -1], [0.17, -0.98], [0.34, -0.94]], // power 4 – 5 shots
+  [[-0.34, -0.94], [-0.17, -0.98], [0, -1], [0.17, -0.98], [0.34, -0.94]], // power 5 – 5 shots fast
+]
+
+const FIRE_RATE = [0.14, 0.13, 0.12, 0.11, 0.10, 0.08]  // decreases with power
 
 export class Player {
   sprite: Sprite
@@ -64,10 +79,18 @@ export class Player {
     this.sprite.x = Math.max(hw, Math.min(this.stageW - hw, this.sprite.x))
     this.sprite.y = Math.max(hh, Math.min(this.stageH - hh, this.sprite.y))
 
+    const power  = Math.min(5, Math.max(0, gameStore.getState().power))
+    const rate   = FIRE_RATE[power]
+    const pattern = SHOT_PATTERNS[power]
+
     this.fireTimer -= dt
     if (fire && this.fireTimer <= 0) {
-      this.fireTimer = FIRE_RATE
-      this.bulletPool.acquire(this.sprite.x, this.sprite.y - 20, 0, -BULLET_SPEED)
+      this.fireTimer = rate
+      const ox = this.sprite.x
+      const oy = this.sprite.y - 20
+      for (const [nx, ny] of pattern) {
+        this.bulletPool.acquire(ox, oy, nx * BULLET_SPEED, ny * BULLET_SPEED)
+      }
     }
 
     if (this.invincible > 0) {

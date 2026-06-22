@@ -1,14 +1,15 @@
 export interface EnemyDef {
-  sprite: string      // path under /assets/kenney/
+  sprite: string
   hp: number
   speed: number
   scoreValue: number
-  fireRate: number    // seconds between shots (0 = no fire)
+  fireRate: number
   bulletSpeed: number
   scale: number
 }
 
 export const ENEMIES: Record<string, EnemyDef> = {
+  // ── Stage 1 ───────────────────────────────────────────────
   fighter: {
     sprite: '/assets/kenney/Ships/ship_0001.png',
     hp: 1, speed: 120, scoreValue: 100,
@@ -23,5 +24,27 @@ export const ENEMIES: Record<string, EnemyDef> = {
     sprite: '/assets/kenney/Ships/ship_0005.png',
     hp: 1, speed: 200, scoreValue: 150,
     fireRate: 0, bulletSpeed: 0, scale: 1.2,
+  },
+  // ── Stage 2 ───────────────────────────────────────────────
+  interceptor: {
+    sprite: '/assets/kenney/Ships/ship_0007.png',
+    hp: 1, speed: 240, scoreValue: 180,
+    fireRate: 1.8, bulletSpeed: 260, scale: 1.4,
+  },
+  gunship: {
+    sprite: '/assets/kenney/Ships/ship_0009.png',
+    hp: 4, speed: 80, scoreValue: 350,
+    fireRate: 1.4, bulletSpeed: 210, scale: 2.2,
+  },
+  // ── Stage 3 ───────────────────────────────────────────────
+  elite: {
+    sprite: '/assets/kenney/Ships/ship_0011.png',
+    hp: 2, speed: 200, scoreValue: 250,
+    fireRate: 1.6, bulletSpeed: 270, scale: 1.6,
+  },
+  carrier: {
+    sprite: '/assets/kenney/Ships/ship_0013.png',
+    hp: 6, speed: 55, scoreValue: 500,
+    fireRate: 1.0, bulletSpeed: 190, scale: 2.5,
   },
 }

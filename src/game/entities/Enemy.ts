@@ -1,8 +1,9 @@
 import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
 import { EnemyDef } from '../data/enemies'
 import { BulletPool } from './BulletPool'
+import { EnemyPath } from '../data/stages'
 
-export type EnemyPath = 'straight' | 'zigzag' | 'dive'
+export type { EnemyPath }
 
 export class Enemy {
   sprite: Sprite
@@ -16,6 +17,7 @@ export class Enemy {
   private age = 0
   private zigzagDir = 1
   private playerX = 240
+  private diagVx = 0
 
   constructor(private container: Container, texture: Texture) {
     this.sprite = new Sprite(texture)
@@ -25,7 +27,11 @@ export class Enemy {
     this.hitbox = new Rectangle(-12, -12, 24, 24)
   }
 
-  activate(x: number, y: number, def: EnemyDef, path: EnemyPath, playerX: number, texture: Texture) {
+  activate(
+    x: number, y: number,
+    def: EnemyDef, path: EnemyPath,
+    playerX: number, texture: Texture,
+  ) {
     this.def = def
     this.path = path
     this.hp = def.hp
@@ -40,7 +46,11 @@ export class Enemy {
     this.sprite.visible = true
     this.active = true
 
-    const hw = (this.sprite.width * 0.6) / 2
+    // diagonal entry angle: 30° inward
+    this.diagVx = path === 'diagonal-left'  ? -0.58 :   // tan(30°)
+                  path === 'diagonal-right' ?  0.58 : 0
+
+    const hw = (this.sprite.width  * 0.6) / 2
     const hh = (this.sprite.height * 0.6) / 2
     this.hitbox = new Rectangle(-hw, -hh, hw * 2, hh * 2)
   }
@@ -63,29 +73,47 @@ export class Enemy {
     if (!this.active) return
     this.age += dt
     this.playerX = playerX
-
-    const speed = this.def.speed
+    const spd = this.def.speed
 
     switch (this.path) {
       case 'straight':
-        this.sprite.y += speed * dt
+        this.sprite.y += spd * dt
         break
+
       case 'zigzag':
-        this.sprite.y += speed * 0.7 * dt
-        this.sprite.x += this.zigzagDir * speed * 0.8 * dt
+        this.sprite.y += spd * 0.7 * dt
+        this.sprite.x += this.zigzagDir * spd * 0.8 * dt
         if (this.age % 1.2 < dt) this.zigzagDir *= -1
         break
+
       case 'dive': {
-        const dx = this.playerX - this.sprite.x
+        const dx = playerX - this.sprite.x
         const dy = stageH - this.sprite.y
         const len = Math.sqrt(dx * dx + dy * dy) || 1
-        this.sprite.x += (dx / len) * speed * dt
-        this.sprite.y += (dy / len) * speed * dt
+        this.sprite.x += (dx / len) * spd * dt
+        this.sprite.y += (dy / len) * spd * dt
+        break
+      }
+
+      case 'diagonal-left':
+      case 'diagonal-right': {
+        // straight down + horizontal drift; after crossing the stage switch to dive
+        const halfW = 480 / 2
+        if (this.sprite.y < stageH * 0.35) {
+          this.sprite.y += spd * dt
+          this.sprite.x += this.diagVx * spd * dt
+        } else {
+          const dx = playerX - this.sprite.x
+          const dy = stageH * 0.7 - this.sprite.y
+          const len = Math.sqrt(dx * dx + dy * dy) || 1
+          this.sprite.x += (dx / len) * spd * 0.9 * dt
+          this.sprite.y += (dy / len) * spd * 0.9 * dt
+        }
         break
       }
     }
 
-    // enemy fires
+    // fire
     if (this.def.fireRate > 0) {
       const period = this.def.fireRate
       const prev = (this.age - dt) % period
@@ -95,10 +123,10 @@ export class Enemy {
       }
     }
 
-    // off-screen culling
-    if (this.sprite.y > stageH + 40 || this.sprite.y < -200 ||
-        this.sprite.x < -100 || this.sprite.x > 580) {
-      this.deactivate()
-    }
+    // off-screen cull
+    if (
+      this.sprite.y > stageH + 60 || this.sprite.y < -200 ||
+      this.sprite.x < -120 || this.sprite.x > 600
+    ) this.deactivate()
   }
 }

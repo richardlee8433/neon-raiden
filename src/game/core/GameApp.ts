@@ -10,6 +10,7 @@ import { Boss } from '../entities/Boss'
 import { PickupPool } from '../entities/Pickup'
 import { ExplosionPool } from '../fx/Explosion'
 import { BombEffect } from '../fx/BombEffect'
+import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 
 const W = 480, H = 640
@@ -35,6 +36,9 @@ export class GameApp {
   private bulletLayer!: Container
   private fxLayer!: Container
 
+  private bombCooldown = false
+  private transitioning = false
+
   constructor(private canvas: HTMLCanvasElement) {
     this.app = new Application()
     this.input = new InputSystem()
@@ -59,53 +63,75 @@ export class GameApp {
     this.fxLayer     = new Container()
     this.app.stage.addChild(this.bgLayer, this.gameLayer, this.bulletLayer, this.fxLayer)
 
-    this.scroll = new ScrollSystem(this.bgLayer, W, H)
+    this.scroll = new ScrollSystem(this.bgLayer, W, H, 'space')
 
     this.playerBullets = new BulletPool(this.bulletLayer, assets.playerBullet, 200)
     this.enemyBullets  = new BulletPool(this.bulletLayer, assets.enemyBullet,  500)
     this.bossBullets   = new BulletPool(this.bulletLayer, assets.bossBullet,   200)
 
-    this.player = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
-
-    this.boss = new Boss(this.gameLayer, assets.bossShip, this.bossBullets)
-
-    this.pickups = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb)
-
+    this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
+    this.boss      = new Boss(this.gameLayer)
+    this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
-
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
 
     this.waves = new WaveSystem(this.gameLayer)
     await this.waves.loadTextures()
 
-    // Listen for title → playing transition to start/restart game
+    // Phase transitions
     gameStore.subscribe((s, prev) => {
-      if (s.phase === 'playing' && prev.phase !== 'playing') {
-        this.restartGame()
+      if (s.phase === 'playing' && prev.phase === 'title') {
+        this.startStage(s.stage)
+      }
+      if (s.phase === 'stageclear' && prev.phase !== 'stageclear') {
+        this.handleStageClear(s.stage)
       }
     })
 
-    // Start paused on title
     this.app.ticker.add(({ deltaMS }) => {
       const dt = Math.min(deltaMS / 1000, 0.05)
       this.tick(dt)
     })
   }
 
-  private restartGame() {
-    this.waves.reset()
+  private startStage(stageNum: number) {
+    const cfg = STAGES[stageNum - 1] ?? STAGES[0]
+    this.scroll.setTheme(cfg.bgTheme)
+    this.waves.loadStage(cfg)
     this.playerBullets.releaseAll()
     this.enemyBullets.releaseAll()
     this.bossBullets.releaseAll()
     this.pickups.releaseAll()
     this.player['sprite'].x = W / 2
     this.player['sprite'].y = H * 0.8
+    this.transitioning = false
+  }
+
+  private handleStageClear(stageNum: number) {
+    if (this.transitioning) return
+    this.transitioning = true
+
+    if (stageNum >= STAGES.length) {
+      // All stages done — go back to title after a pause
+      setTimeout(() => gameStore.getState().setPhase('title'), 3500)
+      return
+    }
+
+    // Advance to next stage
+    setTimeout(() => {
+      gameStore.getState().advanceStage()   // phase → 'advancing', stage++
+    }, 2000)
+
+    setTimeout(() => {
+      const s = gameStore.getState()
+      this.startStage(s.stage)
+      gameStore.setState({ phase: 'playing' })
+    }, 4500)
   }
 
   private tick(dt: number) {
     const phase = gameStore.getState().phase
     this.scroll.update(dt)
-
     if (phase !== 'playing') return
 
     this.input.update()
@@ -118,29 +144,27 @@ export class GameApp {
     if (spawnBoss && !this.boss.active) {
       this.waves.dismissAll()
       this.enemyBullets.releaseAll()
-      this.boss.spawn()
+      const stage = gameStore.getState().stage
+      const cfg = STAGES[stage - 1] ?? STAGES[0]
+      this.boss.spawn(cfg.boss)
     }
 
-    if (this.boss.active) this.boss.update(dt, this.player.x)
+    if (this.boss.active) this.boss.update(dt, this.player.x, this.bossBullets)
 
     this.pickups.update(dt, this.player.x, this.player.y, H)
 
     this.collision.check(
       this.playerBullets, this.enemyBullets, this.bossBullets,
-      this.waves.activeEnemies, this.boss.active ? this.boss : null,
+      this.waves.activeEnemies,
+      this.boss.active ? this.boss : null,
       this.player, this.explosions, this.pickups,
     )
 
     this.explosions.update(dt)
     this.bombEffect.update(dt)
 
-    // Bomb skill
-    if (this.input.actions.bomb && !this.bombCooldown) {
-      this.triggerBomb()
-    }
+    if (this.input.actions.bomb && !this.bombCooldown) this.triggerBomb()
   }
-
-  private bombCooldown = false
 
   private triggerBomb() {
     if (!gameStore.getState().useBomb()) return
@@ -159,7 +183,6 @@ export class GameApp {
         e.deactivate()
       }
     }
-
     if (this.boss.active) {
       this.boss.hit(5)
       this.explosions.spawn(this.boss.sprite.x, this.boss.sprite.y, 3)
