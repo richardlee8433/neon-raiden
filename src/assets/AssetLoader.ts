@@ -1,4 +1,4 @@
-import { Assets, Texture } from 'pixi.js'
+import { Texture } from 'pixi.js'
 
 export interface GameAssets {
   playerShip: Texture
@@ -12,6 +12,17 @@ export interface GameAssets {
 }
 
 const EXPLOSION_TILES = [16, 17, 18, 19, 20, 21]
+
+// Load via HTMLImageElement instead of Pixi's Assets.load(), which uses a
+// blob-URL worker (null origin) that gets 403'd by VIVERSE's CDN.
+function loadTexture(src: string): Promise<Texture> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(Texture.from(img))
+    img.onerror = () => reject(new Error(`Failed to load: ${src}`))
+    img.src = src
+  })
+}
 
 export async function loadAssets(): Promise<GameAssets> {
   const paths = [
@@ -27,7 +38,7 @@ export async function loadAssets(): Promise<GameAssets> {
     ),
   ]
 
-  const textures = await Promise.all(paths.map((p) => Assets.load(p)))
+  const textures = await Promise.all(paths.map(loadTexture))
 
   return {
     playerShip:      textures[0],
