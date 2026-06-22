@@ -45,7 +45,7 @@ const stage1: StageConfig = {
     { time: 34, type: 'fighter', count: 5, formation: 'line-top',   path: 'zigzag'   },
   ],
   boss: {
-    shipSprite: '/assets/kenney/Ships/ship_0015.png',
+    shipSprite: './assets/kenney/Ships/ship_0015.png',
     maxHp: 60, speedMult: 1, bulletSpeedMult: 1, fireRateMult: 1, scoreValue: 5000,
   },
 }
@@ -72,7 +72,7 @@ const stage2: StageConfig = {
     { time: 42, type: 'gunship',     count: 3, formation: 'line-top',    path: 'straight'       },
   ],
   boss: {
-    shipSprite: '/assets/kenney/Ships/ship_0017.png',
+    shipSprite: './assets/kenney/Ships/ship_0017.png',
     maxHp: 80, speedMult: 1.3, bulletSpeedMult: 1.25, fireRateMult: 0.8, scoreValue: 8000,
   },
 }
@@ -99,7 +99,7 @@ const stage3: StageConfig = {
     { time: 40, type: 'carrier',      count: 3, formation: 'v-shape',    path: 'straight'       },
   ],
   boss: {
-    shipSprite: '/assets/kenney/Ships/ship_0019.png',
+    shipSprite: './assets/kenney/Ships/ship_0019.png',
     maxHp: 100, speedMult: 1.6, bulletSpeedMult: 1.5, fireRateMult: 0.65, scoreValue: 12000,
   },
 }
