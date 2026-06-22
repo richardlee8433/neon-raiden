@@ -2,6 +2,7 @@ import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
 import { Actions } from '../systems/InputSystem'
 import { BulletPool } from './BulletPool'
 import { gameStore } from '../../store/gameStore'
+import { audioSystem } from '../systems/AudioSystem'
 
 const SPEED = 300
 const BULLET_SPEED = 620
@@ -91,6 +92,7 @@ export class Player {
       for (const [nx, ny] of pattern) {
         this.bulletPool.acquire(ox, oy, nx * BULLET_SPEED, ny * BULLET_SPEED)
       }
+      audioSystem.playShoot(power)
     }
 
     if (this.invincible > 0) {

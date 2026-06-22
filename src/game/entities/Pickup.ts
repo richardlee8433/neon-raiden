@@ -1,5 +1,6 @@
-import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
+import { Container, Sprite, Texture } from 'pixi.js'
 import { gameStore } from '../../store/gameStore'
+import { audioSystem } from '../systems/AudioSystem'
 
 export type PickupType = 'power' | 'bomb'
 
@@ -39,8 +40,8 @@ export class PickupPool {
     inst.sprite.texture = type === 'power' ? this.texPower : this.texBomb
     inst.sprite.x = x
     inst.sprite.y = y
-    inst.sprite.visible = true
     inst.sprite.alpha = 1
+    inst.sprite.visible = true
   }
 
   update(dt: number, playerX: number, playerY: number, stageH: number) {
@@ -51,11 +52,11 @@ export class PickupPool {
 
       const dx = inst.sprite.x - playerX
       const dy = inst.sprite.y - playerY
-      if (Math.sqrt(dx * dx + dy * dy) < COLLECT_RADIUS) {
-        const store = gameStore.getState()
-        if (inst.type === 'power') store.addPower(1)
-        else store.useBomb  // give bomb back
-        if (inst.type === 'bomb') gameStore.setState((s) => ({ bombs: Math.min(5, s.bombs + 1) }))
+      if (dx * dx + dy * dy < COLLECT_RADIUS * COLLECT_RADIUS) {
+        const s = gameStore.getState()
+        if (inst.type === 'power') s.addPower(1)
+        else gameStore.setState((gs) => ({ bombs: Math.min(5, gs.bombs + 1) }))
+        audioSystem.playPickup(inst.type)
         inst.active = false
         inst.sprite.visible = false
         continue

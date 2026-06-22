@@ -11,6 +11,7 @@ interface GameState {
   bossHp: number
   bossMaxHp: number
   bossActive: boolean
+  soundEnabled: boolean
 
   addScore: (n: number) => void
   loseLife: () => void
@@ -20,6 +21,7 @@ interface GameState {
   setBossHp: (hp: number, max: number) => void
   setBossActive: (v: boolean) => void
   advanceStage: () => void
+  toggleSound: () => void
   reset: (keepHi?: boolean) => void
 }
 
@@ -33,6 +35,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   ...freshPlay,
   hiScore: 0,
   phase: 'title',
+  soundEnabled: true,
 
   addScore: (n) => set((s) => {
     const score = s.score + n
@@ -48,16 +51,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPhase: (phase) => set({ phase }),
   setBossHp: (hp, max) => set({ bossHp: hp, bossMaxHp: max }),
   setBossActive: (v) => set({ bossActive: v }),
-
   advanceStage: () => set((s) => ({
     stage: s.stage + 1,
     phase: 'advancing',
     bossActive: false,
   })),
-
+  toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
   reset: (keepHi = true) => set((s) => ({
     ...freshPlay,
     hiScore: keepHi ? s.hiScore : 0,
+    soundEnabled: s.soundEnabled,
   })),
 }))
 

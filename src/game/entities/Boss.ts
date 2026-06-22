@@ -1,4 +1,4 @@
-import { Container, Sprite, Assets, Texture, Rectangle, Graphics } from 'pixi.js'
+import { Container, Sprite, Assets, Rectangle } from 'pixi.js'
 import { BulletPool } from './BulletPool'
 import { BossConfig } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
@@ -20,15 +20,12 @@ export class Boss {
   private flashTimer = 0
   private spiralAngle = 0
   private cfg!: BossConfig
-  private hpBar: Graphics
 
   constructor(private container: Container) {
     this.sprite = new Sprite()
     this.sprite.anchor.set(0.5)
     this.sprite.visible = false
     container.addChild(this.sprite)
-    this.hpBar = new Graphics()
-    container.addChild(this.hpBar)
   }
 
   async spawn(cfg: BossConfig) {
@@ -98,7 +95,6 @@ export class Boss {
         this.sprite.y = TARGET_Y
         this.state = 'fighting'
       }
-      this.drawHpBar()
       return
     }
 
@@ -107,7 +103,6 @@ export class Boss {
       if (this.sprite.alpha <= 0) {
         this.active = false
         this.sprite.visible = false
-        this.hpBar.clear()
         gameStore.getState().setBossActive(false)
         gameStore.getState().addScore(this.cfg.scoreValue)
         gameStore.getState().setPhase('stageclear')
@@ -129,8 +124,6 @@ export class Boss {
       this.fire(playerX, bossBullets)
       this.fireTimer = baseRates[this.phase] * this.cfg.fireRateMult
     }
-
-    this.drawHpBar()
   }
 
   private fire(playerX: number, pool: BulletPool) {
@@ -161,15 +154,5 @@ export class Boss {
       const a = start + i * step
       pool.acquire(x, y, Math.cos(a) * speed, Math.sin(a) * speed)
     }
-  }
-
-  private drawHpBar() {
-    const pct = Math.max(0, this.hp / this.maxHp)
-    const bw = 200, bh = 10, bx = STAGE_W / 2 - 100, by = 10
-    this.hpBar.clear()
-    this.hpBar.rect(bx - 1, by - 1, bw + 2, bh + 2).fill({ color: 0x000000 })
-    this.hpBar.rect(bx, by, bw, bh).fill({ color: 0x333333 })
-    const color = pct > 0.5 ? 0x00dd44 : pct > 0.25 ? 0xffaa00 : 0xff2222
-    this.hpBar.rect(bx, by, bw * pct, bh).fill({ color })
   }
 }

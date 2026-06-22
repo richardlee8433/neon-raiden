@@ -12,6 +12,7 @@ import { ExplosionPool } from '../fx/Explosion'
 import { BombEffect } from '../fx/BombEffect'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
+import { audioSystem } from '../systems/AudioSystem'
 
 const W = 480, H = 640
 
@@ -172,6 +173,7 @@ export class GameApp {
     setTimeout(() => { this.bombCooldown = false }, 800)
 
     this.bombEffect.trigger()
+    audioSystem.playBomb()
     this.enemyBullets.releaseAll()
     this.bossBullets.releaseAll()
 
@@ -186,6 +188,7 @@ export class GameApp {
     if (this.boss.active) {
       this.boss.hit(5)
       this.explosions.spawn(this.boss.sprite.x, this.boss.sprite.y, 3)
+      audioSystem.playExplosion('large')
     }
   }
 

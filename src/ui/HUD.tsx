@@ -1,7 +1,9 @@
 import { useGameStore } from '../store/gameStore'
 
 export function HUD() {
-  const { score, hiScore, lives, bombs, power, bossActive, bossHp, bossMaxHp } = useGameStore()
+  const { score, hiScore, lives, bombs, power,
+          bossActive, bossHp, bossMaxHp,
+          soundEnabled, toggleSound } = useGameStore()
 
   return (
     <>
@@ -20,8 +22,8 @@ export function HUD() {
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           PWR
           <span style={{
-            display: 'inline-block', width: 60, height: 8,
-            background: '#333', borderRadius: 4, overflow: 'hidden',
+            display: 'inline-block', width: 50, height: 7,
+            background: '#333', borderRadius: 3, overflow: 'hidden',
           }}>
             <span style={{
               display: 'block', height: '100%',
@@ -30,13 +32,36 @@ export function HUD() {
             }} />
           </span>
         </span>
+
+        {/* Sound toggle — needs pointer-events re-enabled */}
+        <button
+          onClick={toggleSound}
+          title="Toggle sound (M)"
+          style={{
+            pointerEvents: 'all',
+            background: 'rgba(0,0,0,0.5)',
+            border: '1px solid #444',
+            borderRadius: 4,
+            color: '#fff',
+            cursor: 'pointer',
+            fontFamily: 'monospace',
+            fontSize: 13,
+            lineHeight: 1,
+            padding: '2px 6px',
+            userSelect: 'none',
+          }}
+        >
+          {soundEnabled ? '🔊' : '🔇'}
+        </button>
       </div>
 
       {/* Boss HP bar */}
       {bossActive && (
         <div style={{
-          position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
-          width: 240, pointerEvents: 'none', userSelect: 'none',
+          position: 'absolute', bottom: 16, left: '50%',
+          transform: 'translateX(-50%)',
+          width: 240,
+          pointerEvents: 'none', userSelect: 'none',
           fontFamily: 'monospace', color: '#fff', fontSize: 10,
           textAlign: 'center',
         }}>
@@ -49,8 +74,8 @@ export function HUD() {
             <div style={{
               height: '100%',
               width: `${(bossHp / bossMaxHp) * 100}%`,
-              background: bossHp / bossMaxHp > 0.5
-                ? '#00dd44' : bossHp / bossMaxHp > 0.25 ? '#ffaa00' : '#ff2222',
+              background: bossHp / bossMaxHp > 0.5 ? '#00dd44'
+                        : bossHp / bossMaxHp > 0.25 ? '#ffaa00' : '#ff2222',
               transition: 'width 0.1s, background 0.3s',
             }} />
           </div>
