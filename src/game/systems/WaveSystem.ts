@@ -1,4 +1,4 @@
-import { Container, Assets, Texture } from 'pixi.js'
+import { Container, Texture } from 'pixi.js'
 import { StageConfig, WaveEntry } from '../data/stages'
 import { ENEMIES } from '../data/enemies'
 import { Enemy } from '../entities/Enemy'
@@ -18,8 +18,16 @@ export class WaveSystem {
   constructor(private container: Container) {}
 
   async loadTextures() {
+    const loadTex = (src: string): Promise<Texture> =>
+      new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(Texture.from(img))
+        img.onerror = () => reject(new Error(`Failed to load: ${src}`))
+        img.src = src
+      })
+
     for (const [key, def] of Object.entries(ENEMIES)) {
-      const tex = await Assets.load(def.sprite)
+      const tex = await loadTex(def.sprite)
       this.textures.set(key, tex)
     }
     const defaultTex = this.textures.get('fighter')!

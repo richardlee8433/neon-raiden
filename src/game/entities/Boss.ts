@@ -1,4 +1,4 @@
-import { Container, Sprite, Assets, Rectangle } from 'pixi.js'
+import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
 import { BulletPool } from './BulletPool'
 import { BossConfig } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
@@ -30,7 +30,12 @@ export class Boss {
 
   async spawn(cfg: BossConfig) {
     this.cfg = cfg
-    const tex = await Assets.load(cfg.shipSprite)
+    const tex = await new Promise<Texture>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(Texture.from(img))
+      img.onerror = () => reject(new Error(`Failed to load: ${cfg.shipSprite}`))
+      img.src = cfg.shipSprite
+    })
     this.sprite.texture = tex
 
     this.active = true
