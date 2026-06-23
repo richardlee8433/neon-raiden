@@ -61,6 +61,15 @@ Every boss cycles through 3 phases as HP drops:
 
 ---
 
+## Visual Effects
+
+| Effect | Trigger | Detail |
+|---|---|---|
+| Bullet trails | Every player shot | White-hot core → yellow → orange, 22px gradient behind each bullet |
+| Screen shake | Hits & explosions | Enemy kill: 1.5 · Boss hit: 3 · Boss death: 5 · Player hit: 6 · Bomb: 8 |
+
+---
+
 ## Audio
 
 All sound effects are synthesized live via the **Web Audio API** — zero audio files needed:
@@ -110,6 +119,8 @@ src/
                 AudioSystem.ts      — Web Audio synthesizer singleton
     fx/         Explosion.ts        — Frame-animation pool
                 BombEffect.ts       — Screen-wide flash overlay
+                BulletTrail.ts      — Per-frame gradient trail behind player bullets
+                ScreenShake.ts      — Stage offset with exponential decay
   store/        gameStore.ts        — Zustand: score, lives, power, stage, sound
   ui/           HUD.tsx             — React overlay (score/lives/boss HP bar)
                 TitleScreen.tsx
