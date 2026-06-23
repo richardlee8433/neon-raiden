@@ -7,6 +7,7 @@ import { PickupPool } from '../entities/Pickup'
 import { ExplosionPool } from '../fx/Explosion'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from './AudioSystem'
+import { screenShake } from '../fx/ScreenShake'
 
 function intersects(a: Rectangle, b: Rectangle): boolean {
   return (
@@ -39,6 +40,7 @@ export class CollisionSystem {
         enemy.hp--
         if (enemy.hp <= 0) {
           explosions.spawn(enemy.sprite.x, enemy.sprite.y, 2)
+          screenShake.trigger(1.5)
           audioSystem.playExplosion('small')
           gameStore.getState().addScore(enemy.scoreValue)
           const roll = Math.random()
@@ -54,6 +56,7 @@ export class CollisionSystem {
         if (intersects(br, boss.hitboxWorld)) {
           playerBullets.release(bullet)
           const died = boss.hit(1)
+          screenShake.trigger(died ? 5 : 3)
           audioSystem.playBossHurt()
           if (died) explosions.spawn(boss.sprite.x, boss.sprite.y, 4)
         }
@@ -70,6 +73,7 @@ export class CollisionSystem {
       const pool = enemyBullets.active.includes(bullet) ? enemyBullets : bossBullets
       pool.release(bullet)
       explosions.spawn(player.x, player.y, 1.5)
+      screenShake.trigger(6)
       audioSystem.playPlayerHit()
       const s = gameStore.getState()
       s.loseLife()

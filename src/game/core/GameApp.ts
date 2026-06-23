@@ -10,6 +10,8 @@ import { Boss } from '../entities/Boss'
 import { PickupPool } from '../entities/Pickup'
 import { ExplosionPool } from '../fx/Explosion'
 import { BombEffect } from '../fx/BombEffect'
+import { screenShake } from '../fx/ScreenShake'
+import { BulletTrail } from '../fx/BulletTrail'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
@@ -31,6 +33,7 @@ export class GameApp {
   private pickups!: PickupPool
   private explosions!: ExplosionPool
   private bombEffect!: BombEffect
+  private bulletTrail!: BulletTrail
 
   private bgLayer!: Container
   private gameLayer!: Container
@@ -66,6 +69,7 @@ export class GameApp {
 
     this.scroll = new ScrollSystem(this.bgLayer, W, H, 'space')
 
+    this.bulletTrail   = new BulletTrail(this.bulletLayer)
     this.playerBullets = new BulletPool(this.bulletLayer, assets.playerBullet, 200)
     this.enemyBullets  = new BulletPool(this.bulletLayer, assets.enemyBullet,  500)
     this.bossBullets   = new BulletPool(this.bulletLayer, assets.bossBullet,   200)
@@ -132,11 +136,13 @@ export class GameApp {
 
   private tick(dt: number) {
     const phase = gameStore.getState().phase
+    screenShake.update(dt, this.app.stage)
     this.scroll.update(dt)
     if (phase !== 'playing') return
 
     this.input.update()
     this.player.update(dt, this.input.actions)
+    this.bulletTrail.update(this.playerBullets)
     this.playerBullets.update(dt, W, H)
     this.enemyBullets.update(dt, W, H)
     this.bossBullets.update(dt, W, H)
@@ -173,6 +179,7 @@ export class GameApp {
     setTimeout(() => { this.bombCooldown = false }, 800)
 
     this.bombEffect.trigger()
+    screenShake.trigger(8)
     audioSystem.playBomb()
     this.enemyBullets.releaseAll()
     this.bossBullets.releaseAll()
