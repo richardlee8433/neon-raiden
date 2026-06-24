@@ -55,7 +55,8 @@ export class Enemy {
     this.sprite.texture = texture
     this.sprite.x = x
     this.sprite.y = y
-    this.sprite.scale.set(def.scale, -def.scale)
+    this.sprite.scale.set(def.scale)
+    this.sprite.rotation = Math.PI   // flip to face downward (avoids negative-scale GPU issues)
     this.sprite.alpha = 1
     this.sprite.visible = true
     this.active = true
