@@ -85,7 +85,7 @@ export class Enemy {
     )
   }
 
-  update(dt: number, bulletPool: BulletPool, stageH: number, playerX: number) {
+  update(dt: number, bulletPool: BulletPool, stageH: number, playerX: number, playerY = 512) {
     if (!this.active) return
     this.age += dt
     this.playerX = playerX
@@ -134,9 +134,7 @@ export class Enemy {
       const period = this.def.fireRate
       const prev = (this.age - dt) % period
       const curr = this.age % period
-      if (prev > curr) {
-        bulletPool.acquire(this.sprite.x, this.sprite.y + 10, 0, this.def.bulletSpeed)
-      }
+      if (prev > curr) this.fire(bulletPool, playerX, playerY)
     }
 
     // off-screen cull
@@ -158,6 +156,34 @@ export class Enemy {
       } else {
         this.laserG.clear()
       }
+    }
+  }
+
+  private fire(pool: BulletPool, playerX: number, playerY: number) {
+    const x = this.sprite.x
+    const y = this.sprite.y + 10
+    const spd = this.def.bulletSpeed
+
+    switch (this.def.attackType) {
+      case 'aimed': {
+        const dx = playerX - x
+        const dy = playerY - y
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        pool.acquire(x, y, (dx / len) * spd, (dy / len) * spd)
+        break
+      }
+      case 'spread': {
+        const count = this.def.spreadCount ?? 3
+        const halfAngle = Math.PI / 6   // ±30° from straight down
+        const step = count > 1 ? (halfAngle * 2) / (count - 1) : 0
+        for (let i = 0; i < count; i++) {
+          const a = -halfAngle + i * step
+          pool.acquire(x, y, Math.sin(a) * spd, Math.cos(a) * spd)
+        }
+        break
+      }
+      default:
+        pool.acquire(x, y, 0, spd)
     }
   }
 

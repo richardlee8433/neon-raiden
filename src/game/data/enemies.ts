@@ -7,6 +7,8 @@ export interface EnemyDef {
   bulletSpeed: number
   scale: number
   usesLaser?: boolean
+  attackType?: 'straight' | 'aimed' | 'spread'
+  spreadCount?: number
 }
 
 export const ENEMIES: Record<string, EnemyDef> = {
@@ -19,7 +21,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
   bomber: {
     sprite: './assets/kenney/Ships/ship_0003.png',
     hp: 3, speed: 70, scoreValue: 300,
-    fireRate: 1.0, bulletSpeed: 195, scale: 2,
+    fireRate: 1.2, bulletSpeed: 180, scale: 2,
+    attackType: 'spread', spreadCount: 3,
   },
   scout: {
     sprite: './assets/kenney/Ships/ship_0005.png',
@@ -30,7 +33,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
   interceptor: {
     sprite: './assets/kenney/Ships/ship_0007.png',
     hp: 1, speed: 240, scoreValue: 180,
-    fireRate: 1.0, bulletSpeed: 270, scale: 1.4,
+    fireRate: 1.2, bulletSpeed: 300, scale: 1.4,
+    attackType: 'aimed',
   },
   gunship: {
     sprite: './assets/kenney/Ships/ship_0009.png',

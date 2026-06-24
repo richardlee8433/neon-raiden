@@ -150,7 +150,7 @@ export class GameApp {
     this.enemyBullets.update(dt, W, H)
     this.bossBullets.update(dt, W, H)
 
-    const { spawnBoss, activeLasers } = this.waves.update(dt, this.enemyBullets, this.player.x, H)
+    const { spawnBoss, activeLasers } = this.waves.update(dt, this.enemyBullets, this.player.x, this.player.y, H)
     if (spawnBoss && !this.boss.active) {
       this.waves.dismissAll()
       this.enemyBullets.releaseAll()

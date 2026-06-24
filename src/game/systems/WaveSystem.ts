@@ -60,7 +60,7 @@ export class WaveSystem {
     }
   }
 
-  update(dt: number, enemyBullets: BulletPool, playerX: number, stageH: number)
+  update(dt: number, enemyBullets: BulletPool, playerX: number, playerY: number, stageH: number)
     : { spawnBoss: boolean; activeLasers: Array<{ x: number; fromY: number }> } {
     this.elapsed += dt
 
@@ -75,7 +75,7 @@ export class WaveSystem {
     const activeLasers: Array<{ x: number; fromY: number }> = []
     for (const e of this.enemies) {
       if (!e.active) continue
-      e.update(dt, enemyBullets, stageH, playerX)
+      e.update(dt, enemyBullets, stageH, playerX, playerY)
       const laser = e.activeLaser
       if (laser) activeLasers.push(laser)
     }
