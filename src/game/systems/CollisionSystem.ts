@@ -16,8 +16,9 @@ function intersects(a: Rectangle, b: Rectangle): boolean {
   )
 }
 
-const ENEMY_DROP_CHANCE   = 0.25
-const ENEMY_BOMB_CHANCE   = 0.10
+const ENEMY_LIFE_CHANCE   = 0.04   // 4%  — rare
+const ENEMY_BOMB_CHANCE   = 0.12   // 8%  — uncommon
+const ENEMY_DROP_CHANCE   = 0.30   // 14% — power (cumulative)
 
 export class CollisionSystem {
   check(
@@ -44,8 +45,9 @@ export class CollisionSystem {
           audioSystem.playExplosion('small')
           gameStore.getState().addScore(enemy.scoreValue)
           const roll = Math.random()
-          if (roll < ENEMY_BOMB_CHANCE)       pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'bomb')
-          else if (roll < ENEMY_DROP_CHANCE)  pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'power')
+          if (roll < ENEMY_LIFE_CHANCE)            pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'life')
+          else if (roll < ENEMY_BOMB_CHANCE)       pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'bomb')
+          else if (roll < ENEMY_DROP_CHANCE)       pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'power')
           enemy.deactivate()
         }
         break

@@ -2,7 +2,7 @@ import { Container, Sprite, Texture } from 'pixi.js'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
 
-export type PickupType = 'power' | 'bomb'
+export type PickupType = 'power' | 'bomb' | 'life'
 
 interface PickupInstance {
   sprite: Sprite
@@ -20,6 +20,7 @@ export class PickupPool {
     private container: Container,
     private texPower: Texture,
     private texBomb: Texture,
+    private texLife: Texture,
     size = 20,
   ) {
     for (let i = 0; i < size; i++) {
@@ -37,7 +38,9 @@ export class PickupPool {
     if (!inst) return
     inst.active = true
     inst.type = type
-    inst.sprite.texture = type === 'power' ? this.texPower : this.texBomb
+    inst.sprite.texture = type === 'power' ? this.texPower
+                        : type === 'life'  ? this.texLife
+                        : this.texBomb
     inst.sprite.x = x
     inst.sprite.y = y
     inst.sprite.alpha = 1
@@ -54,7 +57,8 @@ export class PickupPool {
       const dy = inst.sprite.y - playerY
       if (dx * dx + dy * dy < COLLECT_RADIUS * COLLECT_RADIUS) {
         const s = gameStore.getState()
-        if (inst.type === 'power') s.addPower(1)
+        if (inst.type === 'power')      s.addPower(1)
+        else if (inst.type === 'life')  s.addLife()
         else gameStore.setState((gs) => ({ bombs: Math.min(5, gs.bombs + 1) }))
         audioSystem.playPickup(inst.type)
         inst.active = false

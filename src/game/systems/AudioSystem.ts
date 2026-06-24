@@ -87,12 +87,12 @@ class AudioSystem {
   }
 
   // ── Pickup ──────────────────────────────────────────────────────────────
-  playPickup(type: 'power' | 'bomb') {
+  playPickup(type: 'power' | 'bomb' | 'life') {
     const ctx = this.getCtx()
     if (!ctx) return
-    const freqs = type === 'power'
-      ? [523, 659, 784]   // C E G  — bright arpeggio
-      : [392, 494, 587]   // G B D  — deeper arpeggio
+    const freqs = type === 'power' ? [523, 659, 784]   // C E G  — bright arpeggio
+                : type === 'life'  ? [659, 784, 1047]  // E G C  — joyful high
+                : [392, 494, 587]                       // G B D  — deeper arpeggio
 
     freqs.forEach((freq, i) => {
       const osc  = ctx.createOscillator()

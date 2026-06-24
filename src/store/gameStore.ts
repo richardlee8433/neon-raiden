@@ -15,6 +15,7 @@ interface GameState {
 
   addScore: (n: number) => void
   loseLife: () => void
+  addLife: () => void
   addPower: (n: number) => void
   useBomb: () => boolean
   setPhase: (p: GameState['phase']) => void
@@ -42,6 +43,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { score, hiScore: Math.max(score, s.hiScore) }
   }),
   loseLife: () => set((s) => ({ lives: Math.max(0, s.lives - 1) })),
+  addLife: () => set((s) => ({ lives: Math.min(5, s.lives + 1) })),
   addPower: (n) => set((s) => ({ power: Math.min(5, s.power + n) })),
   useBomb: () => {
     if (get().bombs <= 0) return false
