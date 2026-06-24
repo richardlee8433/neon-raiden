@@ -21,29 +21,31 @@ export class LaserBeam {
     firing: boolean,
     playerX: number,
     playerY: number,
+    laserPower: number,
     enemies: Enemy[],
     boss: Boss | null,
     explosions: ExplosionPool,
   ) {
     this.g.clear()
 
-    if (!firing) {
+    if (!firing || laserPower <= 0) {
       this.active = false
       return
     }
 
     this.active = true
+    const w = 1 + laserPower * 0.25   // 1.25× – 2.25× at power 1–5
     const pulse = 0.85 + 0.15 * Math.sin(Date.now() * 0.025)
 
     // Outer soft aura
     this.g.moveTo(playerX, 0).lineTo(playerX, playerY)
-      .stroke({ color: 0x0055ff, width: 28, alpha: 0.04 * pulse })
+      .stroke({ color: 0x0055ff, width: 28 * w, alpha: 0.04 * pulse })
     // Mid glow
     this.g.moveTo(playerX, 0).lineTo(playerX, playerY)
-      .stroke({ color: 0x22aaff, width: 14, alpha: 0.14 * pulse })
+      .stroke({ color: 0x22aaff, width: 14 * w, alpha: 0.14 * pulse })
     // Inner glow
     this.g.moveTo(playerX, 0).lineTo(playerX, playerY)
-      .stroke({ color: 0x88ddff, width: 6, alpha: 0.45 * pulse })
+      .stroke({ color: 0x88ddff, width: 6 * w, alpha: 0.45 * pulse })
     // Bright core
     this.g.moveTo(playerX, 0).lineTo(playerX, playerY)
       .stroke({ color: 0xffffff, width: 2.5, alpha: pulse })

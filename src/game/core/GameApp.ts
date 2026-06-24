@@ -78,7 +78,7 @@ export class GameApp {
 
     this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
     this.boss      = new Boss(this.gameLayer)
-    this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb, assets.pickupLife)
+    this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb, assets.pickupLife, assets.pickupLaser)
     this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
@@ -150,7 +150,7 @@ export class GameApp {
     this.enemyBullets.update(dt, W, H)
     this.bossBullets.update(dt, W, H)
 
-    const spawnBoss = this.waves.update(dt, this.enemyBullets, this.player.x, H)
+    const { spawnBoss, activeLasers } = this.waves.update(dt, this.enemyBullets, this.player.x, H)
     if (spawnBoss && !this.boss.active) {
       this.waves.dismissAll()
       this.enemyBullets.releaseAll()
@@ -159,13 +159,30 @@ export class GameApp {
       this.boss.spawn(cfg.boss)
     }
 
+    const laserPower = gameStore.getState().laserPower
     this.laser.update(
       dt, this.player.firingLaser,
       this.player.x, this.player.y,
+      laserPower,
       this.waves.activeEnemies,
       this.boss.active ? this.boss : null,
       this.explosions,
     )
+
+    // Enemy laser hits on player
+    for (const beam of activeLasers) {
+      if (this.player.y > beam.fromY && Math.abs(this.player.x - beam.x) < 10) {
+        if (this.player.hit()) {
+          this.explosions.spawn(this.player.x, this.player.y, 1.5)
+          screenShake.trigger(6)
+          audioSystem.playPlayerHit()
+          const s = gameStore.getState()
+          s.loseLife()
+          if (s.lives <= 1) s.setPhase('gameover')
+        }
+        break
+      }
+    }
 
     if (this.boss.active) this.boss.update(dt, this.player.x, this.bossBullets)
 

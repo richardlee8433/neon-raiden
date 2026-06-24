@@ -6,6 +6,7 @@ export interface EnemyDef {
   fireRate: number
   bulletSpeed: number
   scale: number
+  usesLaser?: boolean
 }
 
 export const ENEMIES: Record<string, EnemyDef> = {
@@ -34,7 +35,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
   gunship: {
     sprite: './assets/kenney/Ships/ship_0009.png',
     hp: 4, speed: 80, scoreValue: 350,
-    fireRate: 0.8, bulletSpeed: 220, scale: 2.2,
+    fireRate: 0, bulletSpeed: 0, scale: 2.2,
+    usesLaser: true,
   },
   // ── Stage 3 ───────────────────────────────────────────────
   elite: {

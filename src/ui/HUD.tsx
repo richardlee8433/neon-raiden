@@ -1,7 +1,7 @@
 import { useGameStore } from '../store/gameStore'
 
 export function HUD() {
-  const { score, hiScore, lives, bombs, power,
+  const { score, hiScore, lives, bombs, power, laserPower,
           bossActive, bossHp, bossMaxHp,
           soundEnabled, toggleSound } = useGameStore()
 
@@ -19,17 +19,34 @@ export function HUD() {
         <span>SCORE {String(score).padStart(6, '0')}</span>
         <span>HI {String(hiScore).padStart(6, '0')}</span>
         <span>{'♥'.repeat(Math.max(0, lives))}{'  '}{'💣'.repeat(Math.max(0, bombs))}</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          PWR
-          <span style={{
-            display: 'inline-block', width: 50, height: 7,
-            background: '#333', borderRadius: 3, overflow: 'hidden',
-          }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            BLT
             <span style={{
-              display: 'block', height: '100%',
-              width: `${(power / 5) * 100}%`,
-              background: '#0f0', transition: 'width 0.2s',
-            }} />
+              display: 'inline-block', width: 40, height: 6,
+              background: '#333', borderRadius: 3, overflow: 'hidden',
+            }}>
+              <span style={{
+                display: 'block', height: '100%',
+                width: `${(power / 4) * 100}%`,
+                background: '#ffee00', transition: 'width 0.2s',
+              }} />
+            </span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            LZR
+            <span style={{
+              display: 'inline-block', width: 40, height: 6,
+              background: '#333', borderRadius: 3, overflow: 'hidden',
+            }}>
+              <span style={{
+                display: 'block', height: '100%',
+                width: `${(laserPower / 5) * 100}%`,
+                background: laserPower > 0 ? '#44ddff' : '#333',
+                transition: 'width 0.2s',
+                boxShadow: laserPower > 0 ? '0 0 4px #44ddff' : 'none',
+              }} />
+            </span>
           </span>
         </span>
 

@@ -1,4 +1,4 @@
-import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
+import { Container, Sprite, Texture, Rectangle, Graphics } from 'pixi.js'
 import { EnemyDef } from '../data/enemies'
 import { BulletPool } from './BulletPool'
 import { EnemyPath } from '../data/stages'
@@ -18,6 +18,9 @@ export class Enemy {
   private zigzagDir = 1
   private playerX = 240
   private diagVx = 0
+  private laserG: Graphics | null = null
+  private laserTimer = 0
+  private laserDuration = 0
 
   constructor(private container: Container, texture: Texture) {
     this.sprite = new Sprite(texture)
@@ -25,6 +28,11 @@ export class Enemy {
     this.sprite.visible = false
     container.addChild(this.sprite)
     this.hitbox = new Rectangle(-12, -12, 24, 24)
+  }
+
+  get activeLaser(): { x: number; fromY: number } | null {
+    if (!this.def?.usesLaser || this.laserDuration <= 0) return null
+    return { x: this.sprite.x, fromY: this.sprite.y }
   }
 
   activate(
@@ -38,6 +46,12 @@ export class Enemy {
     this.scoreValue = def.scoreValue
     this.age = 0
     this.playerX = playerX
+    this.laserTimer = 1 + Math.random() * 1.5  // stagger initial fire
+    this.laserDuration = 0
+    if (def.usesLaser && !this.laserG) {
+      this.laserG = new Graphics()
+      this.container.addChild(this.laserG)
+    }
     this.sprite.texture = texture
     this.sprite.x = x
     this.sprite.y = y
@@ -58,6 +72,8 @@ export class Enemy {
   deactivate() {
     this.active = false
     this.sprite.visible = false
+    this.laserDuration = 0
+    this.laserG?.clear()
   }
 
   get hitboxWorld(): Rectangle {
@@ -127,6 +143,35 @@ export class Enemy {
     if (
       this.sprite.y > stageH + 60 || this.sprite.y < -200 ||
       this.sprite.x < -120 || this.sprite.x > 600
-    ) this.deactivate()
+    ) { this.deactivate(); return }
+
+    // Red laser beam (gunship only)
+    if (this.def.usesLaser && this.laserG) {
+      this.laserTimer -= dt
+      if (this.laserTimer <= 0) {
+        this.laserTimer = 2.8 + Math.random() * 0.4
+        this.laserDuration = 0.55
+      }
+      if (this.laserDuration > 0) {
+        this.laserDuration -= dt
+        this.drawLaser(stageH)
+      } else {
+        this.laserG.clear()
+      }
+    }
+  }
+
+  private drawLaser(stageH: number) {
+    if (!this.laserG) return
+    const g = this.laserG
+    const x = this.sprite.x
+    const y = this.sprite.y
+    const pulse = 0.82 + 0.18 * Math.sin(Date.now() * 0.028)
+    g.clear()
+    g.moveTo(x, y).lineTo(x, stageH).stroke({ color: 0x550000, width: 26, alpha: 0.06 * pulse })
+    g.moveTo(x, y).lineTo(x, stageH).stroke({ color: 0xff2200, width: 12, alpha: 0.20 * pulse })
+    g.moveTo(x, y).lineTo(x, stageH).stroke({ color: 0xff6633, width: 5,  alpha: 0.60 * pulse })
+    g.moveTo(x, y).lineTo(x, stageH).stroke({ color: 0xffddcc, width: 2,  alpha: 0.95 * pulse })
+    g.circle(x, y + 4, 8 + 3 * pulse).stroke({ color: 0xff4422, width: 1.5, alpha: 0.5 })
   }
 }

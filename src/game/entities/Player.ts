@@ -81,23 +81,21 @@ export class Player {
     this.sprite.x = Math.max(hw, Math.min(this.stageW - hw, this.sprite.x))
     this.sprite.y = Math.max(hh, Math.min(this.stageH - hh, this.sprite.y))
 
-    const power  = Math.min(5, Math.max(0, gameStore.getState().power))
+    const state = gameStore.getState()
+    const power = Math.min(4, Math.max(0, state.power))
+    this.firingLaser = fire && state.laserPower > 0
 
-    // Power 5 = laser mode — skip bullet spawning
-    this.firingLaser = fire && power >= 5
-    if (!this.firingLaser) {
-      const rate    = FIRE_RATE[power]
-      const pattern = SHOT_PATTERNS[power]
-      this.fireTimer -= dt
-      if (fire && this.fireTimer <= 0) {
-        this.fireTimer = rate
-        const ox = this.sprite.x
-        const oy = this.sprite.y - 20
-        for (const [nx, ny] of pattern) {
-          this.bulletPool.acquire(ox, oy, nx * BULLET_SPEED, ny * BULLET_SPEED)
-        }
-        audioSystem.playShoot(power)
+    const rate    = FIRE_RATE[power]
+    const pattern = SHOT_PATTERNS[power]
+    this.fireTimer -= dt
+    if (fire && this.fireTimer <= 0) {
+      this.fireTimer = rate
+      const ox = this.sprite.x
+      const oy = this.sprite.y - 20
+      for (const [nx, ny] of pattern) {
+        this.bulletPool.acquire(ox, oy, nx * BULLET_SPEED, ny * BULLET_SPEED)
       }
+      audioSystem.playShoot(power)
     }
 
     if (this.invincible > 0) {

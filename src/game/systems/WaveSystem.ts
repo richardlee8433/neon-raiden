@@ -60,8 +60,8 @@ export class WaveSystem {
     }
   }
 
-  // Returns true once when boss should spawn
-  update(dt: number, enemyBullets: BulletPool, playerX: number, stageH: number): boolean {
+  update(dt: number, enemyBullets: BulletPool, playerX: number, stageH: number)
+    : { spawnBoss: boolean; activeLasers: Array<{ x: number; fromY: number }> } {
     this.elapsed += dt
 
     while (
@@ -72,15 +72,17 @@ export class WaveSystem {
       this.nextWaveIdx++
     }
 
+    const activeLasers: Array<{ x: number; fromY: number }> = []
     for (const e of this.enemies) {
-      if (e.active) e.update(dt, enemyBullets, stageH, playerX)
+      if (!e.active) continue
+      e.update(dt, enemyBullets, stageH, playerX)
+      const laser = e.activeLaser
+      if (laser) activeLasers.push(laser)
     }
 
-    if (!this.bossTriggered && this.elapsed >= this.bossTriggerTime) {
-      this.bossTriggered = true
-      return true
-    }
-    return false
+    const spawnBoss = !this.bossTriggered && this.elapsed >= this.bossTriggerTime
+    if (spawnBoss) this.bossTriggered = true
+    return { spawnBoss, activeLasers }
   }
 
   get activeEnemies(): Enemy[] {
