@@ -12,6 +12,7 @@ import { ExplosionPool } from '../fx/Explosion'
 import { BombEffect } from '../fx/BombEffect'
 import { screenShake } from '../fx/ScreenShake'
 import { BulletTrail } from '../fx/BulletTrail'
+import { LaserBeam } from '../fx/LaserBeam'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
@@ -34,6 +35,7 @@ export class GameApp {
   private explosions!: ExplosionPool
   private bombEffect!: BombEffect
   private bulletTrail!: BulletTrail
+  private laser!: LaserBeam
 
   private bgLayer!: Container
   private gameLayer!: Container
@@ -77,6 +79,7 @@ export class GameApp {
     this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
     this.boss      = new Boss(this.gameLayer)
     this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb, assets.pickupLife)
+    this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
 
@@ -155,6 +158,14 @@ export class GameApp {
       const cfg = STAGES[stage - 1] ?? STAGES[0]
       this.boss.spawn(cfg.boss)
     }
+
+    this.laser.update(
+      dt, this.player.firingLaser,
+      this.player.x, this.player.y,
+      this.waves.activeEnemies,
+      this.boss.active ? this.boss : null,
+      this.explosions,
+    )
 
     if (this.boss.active) this.boss.update(dt, this.player.x, this.bossBullets)
 
