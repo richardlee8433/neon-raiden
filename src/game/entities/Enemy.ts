@@ -104,8 +104,10 @@ export class Enemy {
         break
 
       case 'dive': {
+        // Aim past the bottom of the screen so the enemy always keeps
+        // descending and eventually exits (never stalls at the target point).
         const dx = playerX - this.sprite.x
-        const dy = stageH - this.sprite.y
+        const dy = (stageH + 300) - this.sprite.y
         const len = Math.sqrt(dx * dx + dy * dy) || 1
         this.sprite.x += (dx / len) * spd * dt
         this.sprite.y += (dy / len) * spd * dt
@@ -114,14 +116,14 @@ export class Enemy {
 
       case 'diagonal-left':
       case 'diagonal-right': {
-        // straight down + horizontal drift; after crossing the stage switch to dive
-        const halfW = 480 / 2
+        // straight down + horizontal drift; after crossing the stage switch to a
+        // dive that also aims below the screen so it exits cleanly.
         if (this.sprite.y < stageH * 0.35) {
           this.sprite.y += spd * dt
           this.sprite.x += this.diagVx * spd * dt
         } else {
           const dx = playerX - this.sprite.x
-          const dy = stageH * 0.7 - this.sprite.y
+          const dy = (stageH + 300) - this.sprite.y
           const len = Math.sqrt(dx * dx + dy * dy) || 1
           this.sprite.x += (dx / len) * spd * 0.9 * dt
           this.sprite.y += (dy / len) * spd * 0.9 * dt
@@ -138,10 +140,12 @@ export class Enemy {
       if (prev > curr) this.fire(bulletPool, playerX, playerY)
     }
 
-    // off-screen cull
+    // off-screen cull, plus a hard max-age failsafe so an enemy can never
+    // linger on screen indefinitely even if a movement pattern stalls.
     if (
       this.sprite.y > stageH + 60 || this.sprite.y < -200 ||
-      this.sprite.x < -120 || this.sprite.x > 600
+      this.sprite.x < -120 || this.sprite.x > 600 ||
+      this.age > 30
     ) { this.deactivate(); return }
 
     // Red laser beam (gunship only)

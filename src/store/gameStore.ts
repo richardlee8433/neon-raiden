@@ -34,11 +34,27 @@ const freshPlay = {
   bossHp: 0, bossMaxHp: 1, bossActive: false,
 }
 
+const SOUND_KEY = 'raiden.soundEnabled'
+
+function loadSoundPref(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+function saveSoundPref(on: boolean) {
+  try {
+    localStorage.setItem(SOUND_KEY, on ? 'on' : 'off')
+  } catch { /* ignore */ }
+}
+
 export const useGameStore = create<GameState>((set, get) => ({
   ...freshPlay,
   hiScore: 0,
   phase: 'title',
-  soundEnabled: true,
+  soundEnabled: loadSoundPref(),
 
   addScore: (n) => set((s) => {
     const score = s.score + n
@@ -61,7 +77,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     phase: 'advancing',
     bossActive: false,
   })),
-  toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
+  toggleSound: () => set((s) => {
+    const soundEnabled = !s.soundEnabled
+    saveSoundPref(soundEnabled)
+    return { soundEnabled }
+  }),
   reset: (keepHi = true) => set((s) => ({
     ...freshPlay,
     hiScore: keepHi ? s.hiScore : 0,
