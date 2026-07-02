@@ -62,7 +62,10 @@ export function HUD() {
 
         {/* Sound toggle — needs pointer-events re-enabled */}
         <button
-          onClick={toggleSound}
+          // Blur after click so a focused button doesn't get re-triggered
+          // by the spacebar (which is the fire key).
+          onClick={(e) => { toggleSound(); e.currentTarget.blur() }}
+          onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') e.preventDefault() }}
           title="Toggle sound (M)"
           style={{
             pointerEvents: 'all',
