@@ -6,6 +6,13 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "5174", "--strictPort"],
       "port": 5174
+    },
+    {
+      "name": "raiden-shmup-prod",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "dist", "--no-clipboard"],
+      "port": 5175,
+      "autoPort": true
     }
   ]
 }
