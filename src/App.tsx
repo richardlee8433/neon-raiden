@@ -45,8 +45,8 @@ export default function App() {
 
   return (
     <div style={{
-      position: 'relative', width: GAME_W, height: GAME_H,
-      margin: '0 auto',
+      position: 'absolute', width: GAME_W, height: GAME_H,
+      left: '50%', top: 0, marginLeft: -(GAME_W / 2),
       transform: `scale(${scale})`,
       transformOrigin: 'top center',
       touchAction: 'none',
