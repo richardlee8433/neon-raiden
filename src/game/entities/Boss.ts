@@ -2,6 +2,7 @@ import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
 import { BulletPool } from './BulletPool'
 import { BossConfig } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
+import { fireRing, fireFlower, fireAimedFan } from '../systems/BulletPatterns'
 
 import { STAGE_H } from '../config'
 
@@ -21,6 +22,7 @@ export class Boss {
   private state: 'entering' | 'fighting' | 'dying' = 'entering'
   private flashTimer = 0
   private spiralAngle = 0
+  private shotIndex = 0
   private cfg!: BossConfig
 
   constructor(private container: Container) {
@@ -48,6 +50,7 @@ export class Boss {
     this.age = 0
     this.fireTimer = 0
     this.spiralAngle = 0
+    this.shotIndex = 0
     this.sprite.scale.set(3, -3)
     this.sprite.x = STAGE_W / 2
     this.sprite.y = -80
@@ -87,7 +90,7 @@ export class Boss {
     return false
   }
 
-  update(dt: number, playerX: number, bossBullets: BulletPool) {
+  update(dt: number, playerX: number, playerY: number, bossBullets: BulletPool) {
     if (!this.active) return
     this.age += dt
 
@@ -125,41 +128,42 @@ export class Boss {
     if (this.phase === 3) this.sprite.y = TARGET_Y + Math.sin(this.age * 1.5) * 30
 
     // Fire
-    const baseRates = [0, 1.5, 1.0, 0.55]
+    const baseRates = [0, 1.5, 0.5, 0.32]
     this.fireTimer -= dt
     if (this.fireTimer <= 0) {
-      this.fire(playerX, bossBullets)
+      this.fire(playerX, playerY, bossBullets)
       this.fireTimer = baseRates[this.phase] * this.cfg.fireRateMult
     }
   }
 
-  private fire(playerX: number, pool: BulletPool) {
+  // Phase 1: slow rings alternating with aimed fans — readable, dodge by walking.
+  // Phase 2: 3-arm spiral with a wide aimed fan woven in every 4th volley.
+  // Phase 3: dense 4-arm spiral plus expanding flower bursts.
+  private fire(playerX: number, playerY: number, pool: BulletPool) {
     const x = this.sprite.x
     const y = this.sprite.y + 30
     const spd = 200 * this.cfg.bulletSpeedMult
+    this.shotIndex++
 
     if (this.phase === 1) {
-      this.spreadShot(x, y, 3, spd, pool)
-    } else if (this.phase === 2) {
-      this.spreadShot(x, y, 5, spd, pool)
-      const dx = playerX - x, dy = STAGE_H - y
-      const len = Math.sqrt(dx * dx + dy * dy) || 1
-      pool.acquire(x, y, (dx / len) * spd * 1.3, (dy / len) * spd * 1.3)
-    } else {
-      for (let i = 0; i < 8; i++) {
-        const a = this.spiralAngle + (i * Math.PI * 2) / 8
-        pool.acquire(x, y, Math.cos(a) * spd, Math.sin(a) * spd)
+      if (this.shotIndex % 2 === 1) {
+        fireRing(pool, x, y, spd * 0.85, 14, this.spiralAngle)
+        this.spiralAngle += 0.4
+      } else {
+        fireAimedFan(pool, x, y, spd * 1.15, 3, 0.42, playerX, playerY)
       }
-      this.spiralAngle += 0.35
-    }
-  }
-
-  private spreadShot(x: number, y: number, count: number, speed: number, pool: BulletPool) {
-    const start = Math.PI / 2 - Math.PI / 4
-    const step = count > 1 ? Math.PI / 2 / (count - 1) : 0
-    for (let i = 0; i < count; i++) {
-      const a = start + i * step
-      pool.acquire(x, y, Math.cos(a) * speed, Math.sin(a) * speed)
+    } else if (this.phase === 2) {
+      fireRing(pool, x, y, spd * 0.9, 3, this.spiralAngle)
+      this.spiralAngle += 0.5
+      if (this.shotIndex % 4 === 0) {
+        fireAimedFan(pool, x, y, spd * 1.25, 5, 0.7, playerX, playerY)
+      }
+    } else {
+      fireRing(pool, x, y, spd * 0.95, 4, this.spiralAngle)
+      this.spiralAngle += 0.3
+      if (this.shotIndex % 6 === 0) {
+        fireFlower(pool, x, y, spd * 0.8, 20, 5, this.spiralAngle)
+      }
     }
   }
 }

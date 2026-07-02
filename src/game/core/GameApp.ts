@@ -13,6 +13,7 @@ import { BombEffect } from '../fx/BombEffect'
 import { screenShake } from '../fx/ScreenShake'
 import { BulletTrail } from '../fx/BulletTrail'
 import { LaserBeam } from '../fx/LaserBeam'
+import { makeGlowBulletTexture } from '../fx/GlowTexture'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
@@ -71,10 +72,15 @@ export class GameApp {
 
     this.scroll = new ScrollSystem(this.bgLayer, W, H, 'space')
 
+    // Neon glow bullets (danmaku-style): enemy fire must pop against the
+    // dark background and read differently from the player's shots.
+    const enemyBulletTex = makeGlowBulletTexture(this.app.renderer, 0xff2e88, 5)
+    const bossBulletTex  = makeGlowBulletTexture(this.app.renderer, 0x33eeff, 6)
+
     this.bulletTrail   = new BulletTrail(this.bulletLayer)
     this.playerBullets = new BulletPool(this.bulletLayer, assets.playerBullet, 200)
-    this.enemyBullets  = new BulletPool(this.bulletLayer, assets.enemyBullet,  500)
-    this.bossBullets   = new BulletPool(this.bulletLayer, assets.bossBullet,   200)
+    this.enemyBullets  = new BulletPool(this.bulletLayer, enemyBulletTex, 500)
+    this.bossBullets   = new BulletPool(this.bulletLayer, bossBulletTex,  200)
 
     this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
     this.boss      = new Boss(this.gameLayer)
@@ -184,7 +190,7 @@ export class GameApp {
       }
     }
 
-    if (this.boss.active) this.boss.update(dt, this.player.x, this.bossBullets)
+    if (this.boss.active) this.boss.update(dt, this.player.x, this.player.y, this.bossBullets)
 
     this.pickups.update(dt, this.player.x, this.player.y, H)
 

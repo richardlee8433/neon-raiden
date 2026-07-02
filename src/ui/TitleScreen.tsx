@@ -47,7 +47,8 @@ export function TitleScreen() {
       </div>
       <div style={{ marginTop: 48, fontSize: 10, color: '#555', lineHeight: 1.8 }}>
         MOVE: ARROW KEYS / WASD<br />
-        FIRE: SPACE &nbsp;&nbsp; BOMB: X / SHIFT
+        FIRE: SPACE &nbsp;&nbsp; BOMB: X / B<br />
+        FOCUS (SLOW): HOLD SHIFT
       </div>
     </div>
   )

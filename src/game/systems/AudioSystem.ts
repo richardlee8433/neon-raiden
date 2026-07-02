@@ -3,6 +3,7 @@ import { gameStore } from '../../store/gameStore'
 class AudioSystem {
   private ctx: AudioContext | null = null
   private shootThrottle = 0   // epoch ms of last shoot sound
+  private grazeThrottle = 0   // epoch ms of last graze tick
 
   private get enabled(): boolean {
     return gameStore.getState().soundEnabled
@@ -141,6 +142,27 @@ class AudioSystem {
     gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.4)
     noise.connect(bp); bp.connect(gn); gn.connect(ctx.destination)
     noise.start(t); noise.stop(t + 0.4)
+  }
+
+  // ── Graze (near-miss tick) ──────────────────────────────────────────────
+  playGraze() {
+    const now = Date.now()
+    if (now - this.grazeThrottle < 45) return   // bullets graze in clusters
+    this.grazeThrottle = now
+
+    const ctx = this.getCtx()
+    if (!ctx) return
+    const t = ctx.currentTime
+
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'square'
+    osc.frequency.setValueAtTime(2400, t)
+    osc.frequency.exponentialRampToValueAtTime(3400, t + 0.03)
+    gain.gain.setValueAtTime(0.045, t)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(t); osc.stop(t + 0.06)
   }
 
   // ── Player hit ──────────────────────────────────────────────────────────

@@ -16,6 +16,10 @@ function intersects(a: Rectangle, b: Rectangle): boolean {
   )
 }
 
+// Bullets passing within this box around the hitbox (without hitting)
+// count as a graze: small score reward for flying dangerously close.
+const GRAZE_RADIUS = 22
+
 const ENEMY_LIFE_CHANCE   = 0.04   // 4%
 const ENEMY_BOMB_CHANCE   = 0.10   // 6%
 const ENEMY_LASER_CHANCE  = 0.18   // 8%
@@ -68,20 +72,32 @@ export class CollisionSystem {
     }
 
     // ── Enemy & boss bullets vs player ────────────────────────────────────
+    const grazeRect = new Rectangle(
+      player.x - GRAZE_RADIUS, player.y - GRAZE_RADIUS,
+      GRAZE_RADIUS * 2, GRAZE_RADIUS * 2,
+    )
     const allHostileBullets = [...enemyBullets.active, ...bossBullets.active]
     for (const bullet of allHostileBullets) {
       const br = new Rectangle(bullet.sprite.x - 3, bullet.sprite.y - 3, 6, 6)
-      if (!intersects(br, player.hitboxWorld)) continue
-      if (!player.hit()) continue
 
-      const pool = enemyBullets.active.includes(bullet) ? enemyBullets : bossBullets
-      pool.release(bullet)
-      explosions.spawn(player.x, player.y, 1.5)
-      screenShake.trigger(6)
-      audioSystem.playPlayerHit()
-      const s = gameStore.getState()
-      s.loseLife()
-      if (s.lives <= 1) s.setPhase('gameover')
+      if (intersects(br, player.hitboxWorld)) {
+        if (!player.hit()) continue
+        const pool = enemyBullets.active.includes(bullet) ? enemyBullets : bossBullets
+        pool.release(bullet)
+        explosions.spawn(player.x, player.y, 1.5)
+        screenShake.trigger(6)
+        audioSystem.playPlayerHit()
+        const s = gameStore.getState()
+        s.loseLife()
+        if (s.lives <= 1) s.setPhase('gameover')
+        continue
+      }
+
+      if (!bullet.grazed && intersects(br, grazeRect)) {
+        bullet.grazed = true
+        gameStore.getState().addGraze()
+        audioSystem.playGraze()
+      }
     }
   }
 }

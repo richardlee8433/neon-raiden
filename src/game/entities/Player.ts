@@ -1,10 +1,14 @@
-import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
+import { Container, Sprite, Texture, Rectangle, Graphics } from 'pixi.js'
 import { Actions } from '../systems/InputSystem'
 import { BulletPool } from './BulletPool'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
 
 const SPEED = 300
+const FOCUS_SPEED_MULT = 0.4
+// Danmaku-style: only this tiny box at the ship's core takes hits,
+// so wings can brush through bullet curtains.
+const HITBOX_SIZE = 6
 const BULLET_SPEED = 620
 
 // Each entry is an array of [vx_norm, vy_norm] direction vectors per power level.
@@ -31,6 +35,8 @@ export class Player {
   private fireTimer = 0
   private invincible = 0
   private flashTimer = 0
+  private focusDot: Graphics
+  private dotPulse = 0
 
   constructor(
     container: Container,
@@ -46,9 +52,14 @@ export class Player {
     this.sprite.scale.set(2)
     container.addChild(this.sprite)
 
-    const hw = (this.sprite.width * 0.35) / 2
-    const hh = (this.sprite.height * 0.35) / 2
-    this.hitbox = new Rectangle(-hw, -hh, hw * 2, hh * 2)
+    const half = HITBOX_SIZE / 2
+    this.hitbox = new Rectangle(-half, -half, HITBOX_SIZE, HITBOX_SIZE)
+
+    this.focusDot = new Graphics()
+    this.focusDot.circle(0, 0, 5.5).fill({ color: 0xff3366, alpha: 0.55 })
+    this.focusDot.circle(0, 0, 2.5).fill(0xffffff)
+    this.focusDot.visible = false
+    container.addChild(this.focusDot)
   }
 
   get x() { return this.sprite.x }
@@ -70,11 +81,12 @@ export class Player {
   }
 
   update(dt: number, actions: Actions) {
-    const { moveX, moveY, fire } = actions
+    const { moveX, moveY, fire, focus } = actions
 
+    const speed = focus ? SPEED * FOCUS_SPEED_MULT : SPEED
     const len = Math.sqrt(moveX * moveX + moveY * moveY) || 1
-    this.sprite.x += (moveX / len) * SPEED * dt
-    this.sprite.y += (moveY / len) * SPEED * dt
+    this.sprite.x += (moveX / len) * speed * dt
+    this.sprite.y += (moveY / len) * speed * dt
 
     // Touch drag: direct positional control
     if (actions.touchActive) {
@@ -110,6 +122,14 @@ export class Player {
       this.sprite.alpha = Math.sin(this.flashTimer * 20) > 0 ? 1 : 0.3
     } else {
       this.sprite.alpha = 1
+    }
+
+    this.focusDot.visible = focus
+    if (focus) {
+      this.dotPulse += dt
+      this.focusDot.x = this.sprite.x
+      this.focusDot.y = this.sprite.y
+      this.focusDot.scale.set(1 + 0.15 * Math.sin(this.dotPulse * 8))
     }
   }
 }

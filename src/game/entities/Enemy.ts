@@ -2,6 +2,7 @@ import { Container, Sprite, Texture, Rectangle, Graphics } from 'pixi.js'
 import { EnemyDef } from '../data/enemies'
 import { BulletPool } from './BulletPool'
 import { EnemyPath } from '../data/stages'
+import { fireRing, fireAimedFan } from '../systems/BulletPatterns'
 
 export type { EnemyPath }
 
@@ -21,6 +22,7 @@ export class Enemy {
   private laserG: Graphics | null = null
   private laserTimer = 0
   private laserDuration = 0
+  private spiralAngle = 0
 
   constructor(private container: Container, texture: Texture) {
     this.sprite = new Sprite(texture)
@@ -48,6 +50,7 @@ export class Enemy {
     this.playerX = playerX
     this.laserTimer = 1 + Math.random() * 1.5  // stagger initial fire
     this.laserDuration = 0
+    this.spiralAngle = Math.random() * Math.PI * 2  // desync pattern shooters
     if (def.usesLaser && !this.laserG) {
       this.laserG = new Graphics()
       this.container.addChild(this.laserG)
@@ -177,6 +180,17 @@ export class Enemy {
         pool.acquire(x, y, (dx / len) * spd, (dy / len) * spd)
         break
       }
+      case 'ring':
+        fireRing(pool, x, y, spd, this.def.bulletCount ?? 8, this.spiralAngle)
+        this.spiralAngle += 0.3   // rotate successive rings so gaps shift
+        break
+      case 'spiral':
+        fireRing(pool, x, y, spd, this.def.bulletCount ?? 2, this.spiralAngle)
+        this.spiralAngle += 0.42  // per-volley advance traces the spiral arms
+        break
+      case 'aimed-fan':
+        fireAimedFan(pool, x, y, spd, this.def.bulletCount ?? 3, 0.44, playerX, playerY)
+        break
       case 'spread': {
         const count = this.def.spreadCount ?? 3
         const halfAngle = Math.PI / 6   // ±30° from straight down

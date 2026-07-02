@@ -1,6 +1,6 @@
 # Raiden Pixel Assault
 
-A vertical-scrolling shoot 'em up (shmup) built with React + Pixi.js v8, styled after the classic Raiden series. Playable in any modern browser — no install required.
+A vertical-scrolling shoot 'em up (shmup) built with React + Pixi.js v8, blending classic Raiden-style action with danmaku (bullet-hell) mechanics: a pixel-perfect hitbox, graze scoring, focus movement, and geometric bullet patterns. Playable in any modern browser — no install required.
 
 ---
 
@@ -19,8 +19,9 @@ npm run dev
 | Action | Key |
 |---|---|
 | Move | Arrow Keys / WASD |
+| Focus (slow, shows hitbox) | Hold Shift |
 | Fire | Space |
-| Bomb (screen clear) | X / Shift |
+| Bomb (screen clear) | X / B |
 | Mute / Unmute | M or 🔊 button |
 
 ---
@@ -34,6 +35,25 @@ npm run dev
 | 3 — Asteroid Belt | Red asteroid rocks | Elite · Carrier | 100 |
 
 Each stage ends with a 3-phase boss. Bosses get faster bullet patterns and higher speed per stage.
+
+---
+
+## Danmaku Mechanics
+
+**Tiny hitbox** — only a 6px point at the ship's core takes damage. Wings brushing through bullet curtains are safe; hold Shift to see the glowing hitbox dot.
+
+**Graze** — enemy bullets passing within 22px of the hitbox without hitting award +50 points each (once per bullet), with a high-pitched tick. The HUD tracks your total graze count.
+
+**Geometric bullet patterns** — enemy fire is choreographed with polar-coordinate emitters (`BulletPatterns.ts`):
+
+| Pattern | Shape | Used by |
+|---|---|---|
+| `ring` | Evenly spaced full circle | Bomber (8-way) |
+| `spiral` | Rotating arms, advances per volley | Carrier (2-arm), bosses |
+| `flower` | Speed modulated by sin(petals·θ) — petal outline | Boss phase 3 |
+| `aimed-fan` | Fan centered on the player | Elite (3-way), bosses |
+
+Enemy bullets are glowing neon rounds (pink for enemies, cyan for bosses) generated procedurally, so they pop against the dark background.
 
 ---
 
@@ -55,9 +75,9 @@ Destroy enemies to drop **P** (power) and **B** (bomb) pickups.
 
 Every boss cycles through 3 phases as HP drops:
 
-- **Phase 1** (100–67% HP) — sweep left/right · 3-way spread
-- **Phase 2** (67–33% HP) — faster sweep · 5-way spread + aimed shot
-- **Phase 3** (33–0% HP) — erratic movement · 8-way spiral
+- **Phase 1** (100–67% HP) — sweep left/right · slow 14-bullet rings alternating with aimed fans
+- **Phase 2** (67–33% HP) — faster sweep · 3-arm spiral with a wide aimed fan every 4th volley
+- **Phase 3** (33–0% HP) — erratic movement · dense 4-arm spiral + expanding flower bursts
 
 ---
 
@@ -83,6 +103,7 @@ All sound effects are synthesized live via the **Web Audio API** — zero audio 
 | Chime | Pickup collected |
 | Rumble | Bomb detonated |
 | Thud | Player hit |
+| High tick | Graze (near-miss) |
 
 ---
 
@@ -107,19 +128,21 @@ src/
     core/       GameApp.ts          — Pixi Application, main ticker, stage transitions
     data/       stages.ts           — Per-stage wave/boss config
                 enemies.ts          — Enemy stat table
-    entities/   Player.ts           — Movement, multi-shot, invincibility frames
-                Enemy.ts            — Patterns: straight/zigzag/dive/diagonal
-                Boss.ts             — 3-phase boss with per-stage scaling
+    entities/   Player.ts           — Movement, focus mode, 6px hitbox, multi-shot, i-frames
+                Enemy.ts            — Move paths: straight/zigzag/dive/diagonal · fire patterns
+                Boss.ts             — 3-phase danmaku boss with per-stage scaling
                 BulletPool.ts       — Object pool (zero new in game loop)
                 Pickup.ts           — Power/bomb drops
-    systems/    InputSystem.ts      — Unified action map (keyboard)
+    systems/    InputSystem.ts      — Unified action map (keyboard + touch)
+                BulletPatterns.ts   — Polar-coordinate danmaku emitters (ring/spiral/flower/fan)
                 WaveSystem.ts       — Timed wave spawner per stage
-                CollisionSystem.ts  — AABB collision
+                CollisionSystem.ts  — AABB collision + graze detection
                 ScrollSystem.ts     — Themed scrolling starfield (3 themes)
                 AudioSystem.ts      — Web Audio synthesizer singleton
     fx/         Explosion.ts        — Frame-animation pool
                 BombEffect.ts       — Screen-wide flash overlay
                 BulletTrail.ts      — Per-frame gradient trail behind player bullets
+                GlowTexture.ts      — Procedural neon glow bullet textures
                 ScreenShake.ts      — Stage offset with exponential decay
   store/        gameStore.ts        — Zustand: score, lives, power, stage, sound
   ui/           HUD.tsx             — React overlay (score/lives/boss HP bar)

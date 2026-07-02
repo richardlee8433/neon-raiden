@@ -11,7 +11,7 @@ function triggerBomb() {
 }
 
 export function HUD() {
-  const { score, hiScore, lives, bombs, power, laserPower,
+  const { score, hiScore, graze, lives, bombs, power, laserPower,
           bossActive, bossHp, bossMaxHp,
           soundEnabled, toggleSound } = useGameStore()
 
@@ -83,6 +83,16 @@ export function HUD() {
         >
           {soundEnabled ? '🔊' : '🔇'}
         </button>
+      </div>
+
+      {/* Graze counter */}
+      <div style={{
+        position: 'absolute', top: 28, left: 10,
+        color: '#cc88ff', fontFamily: 'monospace', fontSize: 11,
+        pointerEvents: 'none', userSelect: 'none',
+        textShadow: '0 0 4px #000',
+      }}>
+        GRAZE {graze}
       </div>
 
       {/* Touch bomb button */}

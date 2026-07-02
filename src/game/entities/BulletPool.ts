@@ -5,6 +5,7 @@ export interface Bullet {
   vx: number
   vy: number
   active: boolean
+  grazed: boolean  // already awarded a graze; reset on acquire
 }
 
 export class BulletPool {
@@ -16,7 +17,7 @@ export class BulletPool {
       sprite.anchor.set(0.5)
       sprite.visible = false
       container.addChild(sprite)
-      this.pool.push({ sprite, vx: 0, vy: 0, active: false })
+      this.pool.push({ sprite, vx: 0, vy: 0, active: false, grazed: false })
     }
   }
 
@@ -24,6 +25,7 @@ export class BulletPool {
     const b = this.pool.find((b) => !b.active)
     if (!b) return null
     b.active = true
+    b.grazed = false
     b.vx = vx
     b.vy = vy
     b.sprite.x = x

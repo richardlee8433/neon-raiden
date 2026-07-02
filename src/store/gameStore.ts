@@ -3,6 +3,7 @@ import { create } from 'zustand'
 interface GameState {
   score: number
   hiScore: number
+  graze: number
   lives: number
   bombs: number
   power: number
@@ -15,6 +16,7 @@ interface GameState {
   soundEnabled: boolean
 
   addScore: (n: number) => void
+  addGraze: () => void
   loseLife: () => void
   addLife: () => void
   addPower: (n: number) => void
@@ -29,7 +31,7 @@ interface GameState {
 }
 
 const freshPlay = {
-  score: 0, lives: 3, bombs: 3, power: 0, laserPower: 0,
+  score: 0, graze: 0, lives: 3, bombs: 3, power: 0, laserPower: 0,
   stage: 1, phase: 'playing' as const,
   bossHp: 0, bossMaxHp: 1, bossActive: false,
 }
@@ -59,6 +61,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   addScore: (n) => set((s) => {
     const score = s.score + n
     return { score, hiScore: Math.max(score, s.hiScore) }
+  }),
+  addGraze: () => set((s) => {
+    const score = s.score + 50
+    return { graze: s.graze + 1, score, hiScore: Math.max(score, s.hiScore) }
   }),
   loseLife: () => set((s) => ({ lives: Math.max(0, s.lives - 1) })),
   addLife: () => set((s) => ({ lives: Math.min(5, s.lives + 1) })),
