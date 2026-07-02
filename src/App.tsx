@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GameApp } from './game/core/GameApp'
 import { HUD } from './ui/HUD'
 import { TitleScreen } from './ui/TitleScreen'
@@ -7,11 +7,15 @@ import { StageClearScreen } from './ui/StageClearScreen'
 import { StageAnnouncement } from './ui/StageAnnouncement'
 import { useGameStore } from './store/gameStore'
 
+const GAME_W = 480
+const GAME_H = 640
+
 export default function App() {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
   const gameRef      = useRef<GameApp | null>(null)
   const phase        = useGameStore((s) => s.phase)
   const toggleSound  = useGameStore((s) => s.toggleSound)
+  const [scale, setScale] = useState(1)
 
   useEffect(() => {
     if (!canvasRef.current || gameRef.current) return
@@ -19,6 +23,18 @@ export default function App() {
     gameRef.current = game
     game.init().catch(console.error)
     return () => { game.destroy(); gameRef.current = null }
+  }, [])
+
+  // Fit the game to the viewport (mobile support)
+  useEffect(() => {
+    const onResize = () => {
+      const s = Math.min(window.innerWidth / GAME_W, window.innerHeight / GAME_H, 1)
+      setScale(s)
+      gameRef.current?.setCanvasScale(s)
+    }
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   // 'M' key toggles mute globally
@@ -29,8 +45,14 @@ export default function App() {
   }, [toggleSound])
 
   return (
-    <div style={{ position: 'relative', width: 480, height: 640, margin: '0 auto' }}>
-      <canvas ref={canvasRef} width={480} height={640} style={{ display: 'block' }} />
+    <div style={{
+      position: 'relative', width: GAME_W, height: GAME_H,
+      margin: '0 auto',
+      transform: `scale(${scale})`,
+      transformOrigin: 'top center',
+      touchAction: 'none',
+    }}>
+      <canvas ref={canvasRef} width={GAME_W} height={GAME_H} style={{ display: 'block', touchAction: 'none' }} />
       <HUD />
       {phase === 'title'      && <TitleScreen />}
       {phase === 'gameover'   && <GameOverScreen />}

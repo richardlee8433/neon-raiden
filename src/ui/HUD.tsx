@@ -1,5 +1,15 @@
 import { useGameStore } from '../store/gameStore'
 
+const IS_TOUCH = typeof window !== 'undefined' &&
+  ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+
+function triggerBomb() {
+  window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyX', bubbles: true }))
+  setTimeout(() => {
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyX', bubbles: true }))
+  }, 120)
+}
+
 export function HUD() {
   const { score, hiScore, lives, bombs, power, laserPower,
           bossActive, bossHp, bossMaxHp,
@@ -71,6 +81,25 @@ export function HUD() {
           {soundEnabled ? '🔊' : '🔇'}
         </button>
       </div>
+
+      {/* Touch bomb button */}
+      {IS_TOUCH && (
+        <button
+          onPointerDown={(e) => { e.stopPropagation(); triggerBomb() }}
+          style={{
+            position: 'absolute', bottom: 18, right: 14,
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'rgba(255,60,30,0.30)',
+            border: '2px solid rgba(255,120,80,0.7)',
+            color: '#fff', fontSize: 26,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            userSelect: 'none', touchAction: 'none',
+            zIndex: 10,
+          }}
+        >
+          💣
+        </button>
+      )}
 
       {/* Boss HP bar */}
       {bossActive && (

@@ -15,13 +15,15 @@ export function GameOverScreen() {
   }, [setPhase])
 
   return (
-    <div style={{
+    <div
+      onPointerDown={() => setPhase('title')}
+      style={{
       position: 'absolute', inset: 0,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0,0,10,0.92)',
       color: '#fff', fontFamily: 'monospace',
-      userSelect: 'none',
+      userSelect: 'none', cursor: 'pointer', touchAction: 'none',
     }}>
       <div style={{ fontSize: 38, fontWeight: 'bold', color: '#ff2233',
         textShadow: '0 0 16px #ff0000', letterSpacing: 4 }}>
@@ -41,7 +43,7 @@ export function GameOverScreen() {
         color: blink ? '#aaaaff' : 'transparent',
         transition: 'color 0.1s',
       }}>
-        PRESS  SPACE  TO  RETRY
+        TAP  OR  PRESS  SPACE  TO  RETRY
       </div>
     </div>
   )

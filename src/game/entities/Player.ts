@@ -76,6 +76,12 @@ export class Player {
     this.sprite.x += (moveX / len) * SPEED * dt
     this.sprite.y += (moveY / len) * SPEED * dt
 
+    // Touch drag: direct positional control
+    if (actions.touchActive) {
+      this.sprite.x += actions.touchDX
+      this.sprite.y += actions.touchDY
+    }
+
     const hw = this.sprite.width / 2
     const hh = this.sprite.height / 2
     this.sprite.x = Math.max(hw, Math.min(this.stageW - hw, this.sprite.x))

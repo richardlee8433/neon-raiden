@@ -227,6 +227,11 @@ export class GameApp {
     }
   }
 
+  /** CSS scale of the canvas so touch deltas map to game pixels */
+  setCanvasScale(s: number) {
+    this.input.setCanvasScale(s)
+  }
+
   destroy() {
     this.app.destroy()
     this.input.destroy()

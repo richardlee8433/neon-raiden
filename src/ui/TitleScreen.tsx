@@ -15,13 +15,15 @@ export function TitleScreen() {
   }, [reset])
 
   return (
-    <div style={{
+    <div
+      onPointerDown={() => reset()}
+      style={{
       position: 'absolute', inset: 0,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0,0,17,0.88)',
       color: '#fff', fontFamily: 'monospace',
-      userSelect: 'none',
+      userSelect: 'none', cursor: 'pointer', touchAction: 'none',
     }}>
       <div style={{ fontSize: 11, letterSpacing: 6, color: '#88aaff', marginBottom: 4 }}>
         STAGE 1
@@ -41,7 +43,7 @@ export function TitleScreen() {
         color: blink ? '#ffff00' : 'transparent',
         transition: 'color 0.1s',
       }}>
-        PRESS  SPACE  TO  START
+        TAP  OR  PRESS  SPACE  TO  START
       </div>
       <div style={{ marginTop: 48, fontSize: 10, color: '#555', lineHeight: 1.8 }}>
         MOVE: ARROW KEYS / WASD<br />
