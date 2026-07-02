@@ -17,7 +17,7 @@ import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
 
-const W = 480, H = 640
+import { STAGE_W as W, STAGE_H as H } from '../config'
 
 export class GameApp {
   private app: Application

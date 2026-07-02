@@ -7,8 +7,7 @@ import { StageClearScreen } from './ui/StageClearScreen'
 import { StageAnnouncement } from './ui/StageAnnouncement'
 import { useGameStore } from './store/gameStore'
 
-const GAME_W = 480
-const GAME_H = 640
+import { STAGE_W as GAME_W, STAGE_H as GAME_H } from './game/config'
 
 export default function App() {
   const canvasRef    = useRef<HTMLCanvasElement>(null)

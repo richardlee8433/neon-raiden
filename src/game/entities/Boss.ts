@@ -3,6 +3,8 @@ import { BulletPool } from './BulletPool'
 import { BossConfig } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 
+import { STAGE_H } from '../config'
+
 const STAGE_W = 480
 const TARGET_Y = 120
 
@@ -140,7 +142,7 @@ export class Boss {
       this.spreadShot(x, y, 3, spd, pool)
     } else if (this.phase === 2) {
       this.spreadShot(x, y, 5, spd, pool)
-      const dx = playerX - x, dy = 640 - y
+      const dx = playerX - x, dy = STAGE_H - y
       const len = Math.sqrt(dx * dx + dy * dy) || 1
       pool.acquire(x, y, (dx / len) * spd * 1.3, (dy / len) * spd * 1.3)
     } else {
