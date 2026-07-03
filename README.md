@@ -55,6 +55,8 @@ Each stage ends with a 3-phase boss. Bosses get faster bullet patterns and highe
 
 Enemy bullets are glowing neon rounds (pink for enemies, cyan for bosses) generated procedurally, so they pop against the dark background.
 
+**Score gems & magnet collect** — destroyed enemies scatter gold gems (+100 each). Gems near the ship latch on automatically; fly to the top quarter of the screen (or kill a boss) and **every gem on screen vacuums toward you**. Consecutive pickups raise the collect chime pitch one semitone at a time.
+
 ---
 
 ## Power-Up System
@@ -92,7 +94,9 @@ Every boss cycles through 3 phases as HP drops:
 
 ## Audio
 
-All sound effects are synthesized live via the **Web Audio API** — zero audio files needed:
+All audio — music included — is synthesized live via the **Web Audio API**, zero audio files needed.
+
+**BGM**: a chiptune loop (Am → F → C → G at 168 BPM) scheduled on the Web Audio clock — sine-sweep kick, noise snare/hats, triangle bass on 16ths, square-wave arpeggio lead. Starts with the first stage, stops on game over, and follows the mute toggle.
 
 | Sound | Trigger |
 |---|---|
@@ -101,6 +105,7 @@ All sound effects are synthesized live via the **Web Audio API** — zero audio 
 | Explosion (large) | Bomb / boss hit |
 | Boss explosion | Boss death |
 | Chime | Pickup collected |
+| Rising ping | Gem collected (pitch climbs with streak) |
 | Rumble | Bomb detonated |
 | Thud | Player hit |
 | High tick | Graze (near-miss) |
@@ -133,12 +138,14 @@ src/
                 Boss.ts             — 3-phase danmaku boss with per-stage scaling
                 BulletPool.ts       — Object pool (zero new in game loop)
                 Pickup.ts           — Power/bomb drops
+                Gem.ts              — Score gems with magnet attraction
     systems/    InputSystem.ts      — Unified action map (keyboard + touch)
                 BulletPatterns.ts   — Polar-coordinate danmaku emitters (ring/spiral/flower/fan)
                 WaveSystem.ts       — Timed wave spawner per stage
                 CollisionSystem.ts  — AABB collision + graze detection
                 ScrollSystem.ts     — Themed scrolling starfield (3 themes)
                 AudioSystem.ts      — Web Audio synthesizer singleton
+                MusicSystem.ts      — Synthesized chiptune BGM sequencer
     fx/         Explosion.ts        — Frame-animation pool
                 BombEffect.ts       — Screen-wide flash overlay
                 BulletTrail.ts      — Per-frame gradient trail behind player bullets

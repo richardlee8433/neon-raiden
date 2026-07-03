@@ -144,6 +144,34 @@ class AudioSystem {
     noise.start(t); noise.stop(t + 0.4)
   }
 
+  // ── Gem collect (pitch climbs with the pickup streak) ───────────────────
+  playGem(streak = 1) {
+    const ctx = this.getCtx()
+    if (!ctx) return
+    const t = ctx.currentTime
+    // one semitone per consecutive gem, capped at an octave
+    const freq = 880 * Math.pow(2, Math.min(streak - 1, 12) / 12)
+
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(freq, t)
+    gain.gain.setValueAtTime(0.14, t)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(t); osc.stop(t + 0.12)
+
+    // faint fifth above for sparkle
+    const osc2  = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(freq * 1.5, t)
+    gain2.gain.setValueAtTime(0.05, t)
+    gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.08)
+    osc2.connect(gain2); gain2.connect(ctx.destination)
+    osc2.start(t); osc2.stop(t + 0.09)
+  }
+
   // ── Graze (near-miss tick) ──────────────────────────────────────────────
   playGraze() {
     const now = Date.now()

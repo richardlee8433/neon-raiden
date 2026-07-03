@@ -4,6 +4,7 @@ import { Enemy } from '../entities/Enemy'
 import { Player } from '../entities/Player'
 import { Boss } from '../entities/Boss'
 import { PickupPool } from '../entities/Pickup'
+import { GemPool } from '../entities/Gem'
 import { ExplosionPool } from '../fx/Explosion'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from './AudioSystem'
@@ -35,6 +36,7 @@ export class CollisionSystem {
     player: Player,
     explosions: ExplosionPool,
     pickups: PickupPool,
+    gems: GemPool,
   ) {
     // ── Player bullets vs enemies ──────────────────────────────────────────
     for (const bullet of playerBullets.active) {
@@ -54,6 +56,7 @@ export class CollisionSystem {
           else if (roll < ENEMY_BOMB_CHANCE)        pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'bomb')
           else if (roll < ENEMY_LASER_CHANCE)       pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'laser')
           else if (roll < ENEMY_DROP_CHANCE)        pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'power')
+          gems.spawn(enemy.sprite.x, enemy.sprite.y, Math.random() < 0.35 ? 2 : 1)
           enemy.deactivate()
         }
         break
@@ -66,7 +69,11 @@ export class CollisionSystem {
           const died = boss.hit(1)
           screenShake.trigger(died ? 5 : 3)
           audioSystem.playBossHurt()
-          if (died) explosions.spawn(boss.sprite.x, boss.sprite.y, 4)
+          if (died) {
+            explosions.spawn(boss.sprite.x, boss.sprite.y, 4)
+            gems.spawn(boss.sprite.x, boss.sprite.y, 16)
+            gems.magnetizeAll()
+          }
         }
       }
     }

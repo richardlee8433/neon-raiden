@@ -13,7 +13,9 @@ import { BombEffect } from '../fx/BombEffect'
 import { screenShake } from '../fx/ScreenShake'
 import { BulletTrail } from '../fx/BulletTrail'
 import { LaserBeam } from '../fx/LaserBeam'
-import { makeGlowBulletTexture } from '../fx/GlowTexture'
+import { makeGlowBulletTexture, makeGemTexture } from '../fx/GlowTexture'
+import { GemPool } from '../entities/Gem'
+import { musicSystem } from '../systems/MusicSystem'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
@@ -33,6 +35,7 @@ export class GameApp {
   private player!: Player
   private boss!: Boss
   private pickups!: PickupPool
+  private gems!: GemPool
   private explosions!: ExplosionPool
   private bombEffect!: BombEffect
   private bulletTrail!: BulletTrail
@@ -85,6 +88,7 @@ export class GameApp {
     this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
     this.boss      = new Boss(this.gameLayer)
     this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb, assets.pickupLife, assets.pickupLaser)
+    this.gems      = new GemPool(this.gameLayer, makeGemTexture(this.app.renderer))
     this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
@@ -96,9 +100,13 @@ export class GameApp {
     gameStore.subscribe((s, prev) => {
       if (s.phase === 'playing' && prev.phase === 'title') {
         this.startStage(s.stage)
+        musicSystem.start()
       }
       if (s.phase === 'stageclear' && prev.phase !== 'stageclear') {
         this.handleStageClear(s.stage)
+      }
+      if ((s.phase === 'gameover' || s.phase === 'title') && s.phase !== prev.phase) {
+        musicSystem.stop()
       }
     })
 
@@ -116,6 +124,7 @@ export class GameApp {
     this.enemyBullets.releaseAll()
     this.bossBullets.releaseAll()
     this.pickups.releaseAll()
+    this.gems.releaseAll()
     this.player['sprite'].x = W / 2
     this.player['sprite'].y = H * 0.8
     this.transitioning = false
@@ -193,12 +202,13 @@ export class GameApp {
     if (this.boss.active) this.boss.update(dt, this.player.x, this.player.y, this.bossBullets)
 
     this.pickups.update(dt, this.player.x, this.player.y, H)
+    this.gems.update(dt, this.player.x, this.player.y, H)
 
     this.collision.check(
       this.playerBullets, this.enemyBullets, this.bossBullets,
       this.waves.activeEnemies,
       this.boss.active ? this.boss : null,
-      this.player, this.explosions, this.pickups,
+      this.player, this.explosions, this.pickups, this.gems,
     )
 
     this.explosions.update(dt)
@@ -223,13 +233,18 @@ export class GameApp {
       if (e.hp <= 0) {
         this.explosions.spawn(e.sprite.x, e.sprite.y, 2)
         gameStore.getState().addScore(e.scoreValue)
+        this.gems.spawn(e.sprite.x, e.sprite.y, 1)
         e.deactivate()
       }
     }
     if (this.boss.active) {
-      this.boss.hit(5)
+      const died = this.boss.hit(5)
       this.explosions.spawn(this.boss.sprite.x, this.boss.sprite.y, 3)
       audioSystem.playExplosion('large')
+      if (died) {
+        this.gems.spawn(this.boss.sprite.x, this.boss.sprite.y, 16)
+        this.gems.magnetizeAll()
+      }
     }
   }
 
