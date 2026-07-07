@@ -182,6 +182,7 @@ export class GameApp {
       this.waves.activeEnemies,
       this.boss.active ? this.boss : null,
       this.explosions,
+      this.gems,
     )
 
     // Enemy laser hits on player

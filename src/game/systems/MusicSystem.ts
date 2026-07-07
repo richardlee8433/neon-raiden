@@ -11,7 +11,7 @@ const STEPS_PER_BAR = 16
 const BARS = 4
 const LOOP = STEPS_PER_BAR * BARS  // 64 steps
 
-const MASTER_LEVEL = 0.16
+const MASTER_LEVEL = 0.3
 const LOOKAHEAD = 0.12             // seconds of audio scheduled ahead
 const TICK_MS = 30
 

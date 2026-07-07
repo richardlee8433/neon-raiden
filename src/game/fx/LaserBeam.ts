@@ -1,11 +1,14 @@
 import { Container, Graphics } from 'pixi.js'
 import { Enemy } from '../entities/Enemy'
 import { Boss } from '../entities/Boss'
+import { GemPool } from '../entities/Gem'
 import { ExplosionPool } from './Explosion'
 import { screenShake } from './ScreenShake'
 import { gameStore } from '../../store/gameStore'
 
 const DMG_PER_SEC = 30
+// Bosses resist the beam, otherwise parking on one melts it in seconds
+const BOSS_DMG_MULT = 0.35
 
 export class LaserBeam {
   private g: Graphics
@@ -25,6 +28,7 @@ export class LaserBeam {
     enemies: Enemy[],
     boss: Boss | null,
     explosions: ExplosionPool,
+    gems: GemPool,
   ) {
     this.g.clear()
 
@@ -67,6 +71,7 @@ export class LaserBeam {
       if (e.hp <= 0) {
         explosions.spawn(e.sprite.x, e.sprite.y, 2)
         gameStore.getState().addScore(e.scoreValue)
+        gems.spawn(e.sprite.x, e.sprite.y, 1)
         screenShake.trigger(1.5)
         e.deactivate()
       }
@@ -74,9 +79,14 @@ export class LaserBeam {
 
     if (boss?.active) {
       if (Math.abs(boss.sprite.x - playerX) < boss.sprite.width * 0.5 + 4) {
-        const died = boss.hit(dmg)
-        if (died) screenShake.trigger(5)
-        else screenShake.trigger(0.8)
+        const died = boss.hit(dmg * BOSS_DMG_MULT)
+        if (died) {
+          screenShake.trigger(5)
+          gems.spawn(boss.sprite.x, boss.sprite.y, 16)
+          gems.magnetizeAll()
+        } else {
+          screenShake.trigger(0.8)
+        }
       }
     }
   }
