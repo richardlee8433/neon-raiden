@@ -23,6 +23,7 @@ export class Enemy {
   private laserTimer = 0
   private laserDuration = 0
   private spiralAngle = 0
+  private hitFlash = 0
 
   constructor(private container: Container, texture: Texture) {
     this.sprite = new Sprite(texture)
@@ -61,6 +62,8 @@ export class Enemy {
     this.sprite.scale.set(def.scale)
     this.sprite.rotation = Math.PI   // flip to face downward (avoids negative-scale GPU issues)
     this.sprite.alpha = 1
+    this.sprite.tint = 0xffffff
+    this.hitFlash = 0
     this.sprite.visible = true
     this.active = true
 
@@ -89,9 +92,20 @@ export class Enemy {
     )
   }
 
+  /** Red flash on non-lethal hits so damage reads instantly. */
+  flash() {
+    this.hitFlash = 0.07
+    this.sprite.tint = 0xff5555
+  }
+
   update(dt: number, bulletPool: BulletPool, stageH: number, playerX: number, playerY = 512) {
     if (!this.active) return
     this.age += dt
+
+    if (this.hitFlash > 0) {
+      this.hitFlash -= dt
+      if (this.hitFlash <= 0) this.sprite.tint = 0xffffff
+    }
     this.playerX = playerX
     const spd = this.def.speed
 

@@ -12,7 +12,7 @@ function triggerBomb() {
 
 export function HUD() {
   const { score, hiScore, graze, lives, bombs, power, laserPower,
-          bossActive, bossHp, bossMaxHp,
+          bossActive, bossHp, bossMaxHp, bossWarning,
           soundEnabled, toggleSound } = useGameStore()
 
   return (
@@ -112,6 +112,39 @@ export function HUD() {
         >
           💣
         </button>
+      )}
+
+      {/* Boss warning banner */}
+      {bossWarning && (
+        <div style={{
+          position: 'absolute', top: '38%', left: 0, width: '100%',
+          textAlign: 'center', pointerEvents: 'none', userSelect: 'none',
+          fontFamily: 'monospace',
+        }}>
+          <style>{`
+            @keyframes warnFlash {
+              0%, 100% { opacity: 1; text-shadow: 0 0 24px #ff2200, 0 0 60px #ff2200; }
+              50%      { opacity: 0.25; text-shadow: 0 0 8px #ff2200; }
+            }
+            @keyframes warnSlide {
+              from { transform: translateX(-18px); }
+              to   { transform: translateX(18px); }
+            }
+          `}</style>
+          <div style={{
+            fontSize: 44, fontWeight: 'bold', letterSpacing: 14,
+            color: '#ff3322',
+            animation: 'warnFlash 0.45s linear infinite',
+          }}>
+            WARNING
+          </div>
+          <div style={{
+            marginTop: 6, fontSize: 12, letterSpacing: 6, color: '#ff8877',
+            animation: 'warnFlash 0.45s linear infinite, warnSlide 0.9s ease-in-out infinite alternate',
+          }}>
+            A HUGE BATTLESHIP IS APPROACHING
+          </div>
+        </div>
       )}
 
       {/* Boss HP bar */}

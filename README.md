@@ -75,7 +75,7 @@ Destroy enemies to drop **P** (power) and **B** (bomb) pickups.
 
 ## Boss Phases
 
-Every boss cycles through 3 phases as HP drops:
+Every boss entrance is announced by a flashing **WARNING** banner and air-raid siren while the field clears. Bosses then cycle through 3 phases as HP drops:
 
 - **Phase 1** (100–67% HP) — sweep left/right · slow 14-bullet rings alternating with aimed fans
 - **Phase 2** (67–33% HP) — faster sweep · 3-arm spiral with a wide aimed fan every 4th volley
@@ -87,6 +87,10 @@ Every boss cycles through 3 phases as HP drops:
 
 | Effect | Trigger | Detail |
 |---|---|---|
+| Bloom post-processing | Always on | `AdvancedBloomFilter` (pixi-filters) over the bullet + fx layers — every neon round, gem, laser, and explosion genuinely glows |
+| Engine exhaust | Always on | Blue flame particles streaming from the ship's tail (48-particle pool) |
+| Enemy hit flash | Non-lethal hit | 0.07s red tint so damage reads instantly |
+| Boss WARNING | Boss approach | Field clears, flashing red WARNING banner + air-raid siren for 2.4s before the boss enters |
 | Bullet trails | Every player shot | White-hot core → yellow → orange, 22px gradient behind each bullet |
 | Screen shake | Hits & explosions | Enemy kill: 1.5 · Boss hit: 3 · Boss death: 5 · Player hit: 6 · Bomb: 8 |
 
@@ -109,6 +113,7 @@ All audio — music included — is synthesized live via the **Web Audio API**, 
 | Rumble | Bomb detonated |
 | Thud | Player hit |
 | High tick | Graze (near-miss) |
+| Air-raid siren | Boss WARNING |
 
 ---
 
@@ -118,6 +123,7 @@ All audio — music included — is synthesized live via the **Web Audio API**, 
 |---|---|
 | Framework | React 19 + Vite |
 | Rendering | Pixi.js v8 (WebGL2) |
+| Post-processing | pixi-filters (AdvancedBloomFilter) |
 | State | Zustand |
 | Language | TypeScript |
 | Assets | Kenney Pixel Shmup (CC0) |
@@ -148,6 +154,7 @@ src/
                 MusicSystem.ts      — Synthesized chiptune BGM sequencer
     fx/         Explosion.ts        — Frame-animation pool
                 BombEffect.ts       — Screen-wide flash overlay
+                EngineExhaust.ts    — Glowing engine-flame particle pool
                 BulletTrail.ts      — Per-frame gradient trail behind player bullets
                 GlowTexture.ts      — Procedural neon glow bullet textures
                 ScreenShake.ts      — Stage offset with exponential decay

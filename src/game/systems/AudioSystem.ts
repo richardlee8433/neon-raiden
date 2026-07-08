@@ -216,6 +216,29 @@ class AudioSystem {
     noise.start(t); noise.stop(t + 0.2)
   }
 
+  // ── Boss warning siren (two-tone air-raid sweep) ────────────────────────
+  playSiren() {
+    const ctx = this.getCtx()
+    if (!ctx) return
+    const t = ctx.currentTime
+
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sawtooth'
+    // three rising-falling wails over ~2.2s
+    for (let i = 0; i < 3; i++) {
+      const s = t + i * 0.72
+      osc.frequency.setValueAtTime(440, s)
+      osc.frequency.linearRampToValueAtTime(760, s + 0.36)
+      osc.frequency.linearRampToValueAtTime(440, s + 0.72)
+    }
+    gain.gain.setValueAtTime(0.12, t)
+    gain.gain.setValueAtTime(0.12, t + 2.05)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.25)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(t); osc.stop(t + 2.3)
+  }
+
   // ── Boss hurt ───────────────────────────────────────────────────────────
   playBossHurt() {
     const ctx = this.getCtx()

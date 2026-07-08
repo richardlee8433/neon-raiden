@@ -46,6 +46,7 @@ export class CollisionSystem {
         if (!intersects(br, enemy.hitboxWorld)) continue
         playerBullets.release(bullet)
         enemy.hp--
+        if (enemy.hp > 0) enemy.flash()
         if (enemy.hp <= 0) {
           explosions.spawn(enemy.sprite.x, enemy.sprite.y, 2)
           screenShake.trigger(1.5)

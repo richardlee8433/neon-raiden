@@ -13,6 +13,7 @@ interface GameState {
   bossHp: number
   bossMaxHp: number
   bossActive: boolean
+  bossWarning: boolean
   soundEnabled: boolean
 
   addScore: (n: number) => void
@@ -25,6 +26,7 @@ interface GameState {
   setPhase: (p: GameState['phase']) => void
   setBossHp: (hp: number, max: number) => void
   setBossActive: (v: boolean) => void
+  setBossWarning: (v: boolean) => void
   advanceStage: () => void
   toggleSound: () => void
   reset: (keepHi?: boolean) => void
@@ -33,7 +35,7 @@ interface GameState {
 const freshPlay = {
   score: 0, graze: 0, lives: 3, bombs: 3, power: 0, laserPower: 0,
   stage: 1, phase: 'playing' as const,
-  bossHp: 0, bossMaxHp: 1, bossActive: false,
+  bossHp: 0, bossMaxHp: 1, bossActive: false, bossWarning: false,
 }
 
 const SOUND_KEY = 'raiden.soundEnabled'
@@ -78,6 +80,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPhase: (phase) => set({ phase }),
   setBossHp: (hp, max) => set({ bossHp: hp, bossMaxHp: max }),
   setBossActive: (v) => set({ bossActive: v }),
+  setBossWarning: (v) => set({ bossWarning: v }),
   advanceStage: () => set((s) => ({
     stage: s.stage + 1,
     phase: 'advancing',

@@ -1,4 +1,5 @@
 import { Application, Container } from 'pixi.js'
+import { AdvancedBloomFilter } from 'pixi-filters'
 import { loadAssets } from '../../assets/AssetLoader'
 import { InputSystem } from '../systems/InputSystem'
 import { ScrollSystem } from '../systems/ScrollSystem'
@@ -16,6 +17,7 @@ import { LaserBeam } from '../fx/LaserBeam'
 import { makeGlowBulletTexture, makeGemTexture } from '../fx/GlowTexture'
 import { GemPool } from '../entities/Gem'
 import { musicSystem } from '../systems/MusicSystem'
+import { EngineExhaust } from '../fx/EngineExhaust'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
@@ -40,6 +42,7 @@ export class GameApp {
   private bombEffect!: BombEffect
   private bulletTrail!: BulletTrail
   private laser!: LaserBeam
+  private exhaust!: EngineExhaust
 
   private bgLayer!: Container
   private gameLayer!: Container
@@ -48,6 +51,7 @@ export class GameApp {
 
   private bombCooldown = false
   private transitioning = false
+  private bossCountdown = -1   // >=0: WARNING banner is up, boss enters at 0
 
   constructor(private canvas: HTMLCanvasElement) {
     this.app = new Application()
@@ -71,7 +75,14 @@ export class GameApp {
     this.gameLayer   = new Container()
     this.bulletLayer = new Container()
     this.fxLayer     = new Container()
-    this.app.stage.addChild(this.bgLayer, this.gameLayer, this.bulletLayer, this.fxLayer)
+
+    // Bullets + fx share one bloom pass so every glow texture actually glows.
+    const glowWrap = new Container()
+    glowWrap.addChild(this.bulletLayer, this.fxLayer)
+    glowWrap.filters = [new AdvancedBloomFilter({
+      threshold: 0.25, bloomScale: 1.1, brightness: 1, blur: 5, quality: 4,
+    })]
+    this.app.stage.addChild(this.bgLayer, this.gameLayer, glowWrap)
 
     this.scroll = new ScrollSystem(this.bgLayer, W, H, 'space')
 
@@ -92,6 +103,8 @@ export class GameApp {
     this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
+    this.exhaust    = new EngineExhaust(
+      this.bulletLayer, makeGlowBulletTexture(this.app.renderer, 0x44aaff, 3.5))
 
     this.waves = new WaveSystem(this.gameLayer)
     await this.waves.loadTextures()
@@ -128,6 +141,8 @@ export class GameApp {
     this.player['sprite'].x = W / 2
     this.player['sprite'].y = H * 0.8
     this.transitioning = false
+    this.bossCountdown = -1
+    gameStore.getState().setBossWarning(false)
   }
 
   private handleStageClear(stageNum: number) {
@@ -160,18 +175,29 @@ export class GameApp {
 
     this.input.update()
     this.player.update(dt, this.input.actions)
+    this.exhaust.update(dt, this.player.x, this.player.y, true)
     this.bulletTrail.update(this.playerBullets)
     this.playerBullets.update(dt, W, H)
     this.enemyBullets.update(dt, W, H)
     this.bossBullets.update(dt, W, H)
 
     const { spawnBoss, activeLasers } = this.waves.update(dt, this.enemyBullets, this.player.x, this.player.y, H)
-    if (spawnBoss && !this.boss.active) {
+    if (spawnBoss && !this.boss.active && this.bossCountdown < 0) {
+      // WARNING phase: clear the field, blare the siren, boss enters after it
+      this.bossCountdown = 2.4
+      gameStore.getState().setBossWarning(true)
+      audioSystem.playSiren()
       this.waves.dismissAll()
       this.enemyBullets.releaseAll()
-      const stage = gameStore.getState().stage
-      const cfg = STAGES[stage - 1] ?? STAGES[0]
-      this.boss.spawn(cfg.boss)
+    }
+    if (this.bossCountdown >= 0) {
+      this.bossCountdown -= dt
+      if (this.bossCountdown < 0 && !this.boss.active) {
+        gameStore.getState().setBossWarning(false)
+        const stage = gameStore.getState().stage
+        const cfg = STAGES[stage - 1] ?? STAGES[0]
+        this.boss.spawn(cfg.boss)
+      }
     }
 
     const laserPower = gameStore.getState().laserPower
