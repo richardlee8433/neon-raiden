@@ -6,6 +6,10 @@ import { audioSystem } from '../systems/AudioSystem'
 
 const SPEED = 300
 const FOCUS_SPEED_MULT = 0.4
+const BANK_ANGLE = 0.22        // max hull tilt (radians) when strafing
+const RESPAWN_DELAY = 1.1      // seconds off-screen after death
+const RESPAWN_FLY_SPEED = 300  // fly-in speed from the bottom edge
+const RESPAWN_INVINCIBLE = 3
 // Danmaku-style: only this tiny box at the ship's core takes hits,
 // so wings can brush through bullet curtains.
 const HITBOX_SIZE = 6
@@ -37,6 +41,9 @@ export class Player {
   private flashTimer = 0
   private focusDot: Graphics
   private dotPulse = 0
+  private state: 'alive' | 'dead' | 'respawning' = 'alive'
+  private respawnTimer = 0
+  private tilt = 0
 
   constructor(
     container: Container,
@@ -74,13 +81,50 @@ export class Player {
     )
   }
 
+  get isDead() { return this.state !== 'alive' }
+
+  /**
+   * Returns true if the hit connects — the ship explodes and respawns from
+   * the bottom edge after a short delay. Death costs power (handled by the
+   * caller, which also scatters recoverable pickups).
+   */
   hit() {
-    if (this.invincible > 0) return false
-    this.invincible = 2
+    if (this.state !== 'alive' || this.invincible > 0) return false
+    this.state = 'dead'
+    this.respawnTimer = RESPAWN_DELAY
+    this.sprite.visible = false
+    this.focusDot.visible = false
     return true
   }
 
   update(dt: number, actions: Actions) {
+    // Death → respawn sequence: hidden for a beat, then fly in from below
+    if (this.state === 'dead') {
+      this.respawnTimer -= dt
+      if (this.respawnTimer <= 0) {
+        this.state = 'respawning'
+        this.sprite.visible = true
+        this.sprite.x = this.stageW / 2
+        this.sprite.y = this.stageH + 50
+        this.sprite.rotation = 0
+        this.tilt = 0
+        this.invincible = RESPAWN_INVINCIBLE
+        this.flashTimer = 0
+      }
+      return
+    }
+    if (this.state === 'respawning') {
+      this.sprite.y -= RESPAWN_FLY_SPEED * dt
+      this.invincible -= dt
+      this.flashTimer += dt
+      this.sprite.alpha = Math.sin(this.flashTimer * 20) > 0 ? 1 : 0.3
+      if (this.sprite.y <= this.stageH * 0.8) {
+        this.sprite.y = this.stageH * 0.8
+        this.state = 'alive'
+      }
+      return
+    }
+
     const { moveX, moveY, fire, focus } = actions
 
     const speed = focus ? SPEED * FOCUS_SPEED_MULT : SPEED
@@ -98,6 +142,12 @@ export class Player {
     const hh = this.sprite.height / 2
     this.sprite.x = Math.max(hw, Math.min(this.stageW - hw, this.sprite.x))
     this.sprite.y = Math.max(hh, Math.min(this.stageH - hh, this.sprite.y))
+
+    // Bank the hull into the strafe direction (lerped, so it eases in/out)
+    const tiltInput = Math.max(-1, Math.min(1,
+      moveX + (actions.touchActive ? actions.touchDX * 0.12 : 0)))
+    this.tilt += (tiltInput * BANK_ANGLE - this.tilt) * Math.min(1, 12 * dt)
+    this.sprite.rotation = this.tilt
 
     const state = gameStore.getState()
     const power = Math.min(4, Math.max(0, state.power))

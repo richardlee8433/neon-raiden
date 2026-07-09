@@ -22,6 +22,7 @@ interface GameState {
   addLife: () => void
   addPower: (n: number) => void
   addLaserPower: () => void
+  dropPower: () => void
   useBomb: () => boolean
   setPhase: (p: GameState['phase']) => void
   setBossHp: (hp: number, max: number) => void
@@ -72,6 +73,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   addLife: () => set((s) => ({ lives: Math.min(5, s.lives + 1) })),
   addPower: (n) => set((s) => ({ power: Math.min(4, s.power + n) })),
   addLaserPower: () => set((s) => ({ laserPower: Math.min(5, s.laserPower + 1) })),
+  // death penalty: lose two weapon levels (some scatter as recoverable pickups)
+  dropPower: () => set((s) => ({ power: Math.max(0, s.power - 2) })),
   useBomb: () => {
     if (get().bombs <= 0) return false
     set((s) => ({ bombs: Math.max(0, s.bombs - 1) }))

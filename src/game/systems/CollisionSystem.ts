@@ -9,6 +9,7 @@ import { ExplosionPool } from '../fx/Explosion'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from './AudioSystem'
 import { screenShake } from '../fx/ScreenShake'
+import { hitstop } from '../fx/Hitstop'
 
 function intersects(a: Rectangle, b: Rectangle): boolean {
   return (
@@ -50,6 +51,7 @@ export class CollisionSystem {
         if (enemy.hp <= 0) {
           explosions.spawn(enemy.sprite.x, enemy.sprite.y, 2)
           screenShake.trigger(1.5)
+          hitstop.trigger(0.025)
           audioSystem.playExplosion('small')
           gameStore.getState().addScore(enemy.scoreValue)
           const roll = Math.random()
@@ -72,6 +74,7 @@ export class CollisionSystem {
           audioSystem.playBossHurt()
           if (died) {
             explosions.spawn(boss.sprite.x, boss.sprite.y, 4)
+            hitstop.trigger(0.3)
             gems.spawn(boss.sprite.x, boss.sprite.y, 16)
             gems.magnetizeAll()
           }
@@ -84,6 +87,8 @@ export class CollisionSystem {
       player.x - GRAZE_RADIUS, player.y - GRAZE_RADIUS,
       GRAZE_RADIUS * 2, GRAZE_RADIUS * 2,
     )
+    if (player.isDead) return   // no hits or grazes against the hidden ship
+
     const allHostileBullets = [...enemyBullets.active, ...bossBullets.active]
     for (const bullet of allHostileBullets) {
       const br = new Rectangle(bullet.sprite.x - 3, bullet.sprite.y - 3, 6, 6)
@@ -92,13 +97,17 @@ export class CollisionSystem {
         if (!player.hit()) continue
         const pool = enemyBullets.active.includes(bullet) ? enemyBullets : bossBullets
         pool.release(bullet)
-        explosions.spawn(player.x, player.y, 1.5)
-        screenShake.trigger(6)
+        explosions.spawn(player.x, player.y, 2.5)
+        screenShake.trigger(8)
+        hitstop.trigger(0.15)
         audioSystem.playPlayerHit()
         const s = gameStore.getState()
+        s.dropPower()
+        pickups.spawn(player.x - 30, player.y - 60, 'power')
+        pickups.spawn(player.x + 30, player.y - 60, 'power')
         s.loseLife()
         if (s.lives <= 1) s.setPhase('gameover')
-        continue
+        break
       }
 
       if (!bullet.grazed && intersects(br, grazeRect)) {

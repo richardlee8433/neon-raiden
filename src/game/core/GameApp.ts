@@ -12,6 +12,7 @@ import { PickupPool } from '../entities/Pickup'
 import { ExplosionPool } from '../fx/Explosion'
 import { BombEffect } from '../fx/BombEffect'
 import { screenShake } from '../fx/ScreenShake'
+import { hitstop } from '../fx/Hitstop'
 import { BulletTrail } from '../fx/BulletTrail'
 import { LaserBeam } from '../fx/LaserBeam'
 import { makeGlowBulletTexture, makeGemTexture } from '../fx/GlowTexture'
@@ -172,10 +173,11 @@ export class GameApp {
     screenShake.update(dt, this.app.stage)
     this.scroll.update(dt)
     if (phase !== 'playing') return
+    if (hitstop.update(dt)) return   // impact freeze-frame
 
     this.input.update()
     this.player.update(dt, this.input.actions)
-    this.exhaust.update(dt, this.player.x, this.player.y, true)
+    this.exhaust.update(dt, this.player.x, this.player.y, !this.player.isDead)
     this.bulletTrail.update(this.playerBullets)
     this.playerBullets.update(dt, W, H)
     this.enemyBullets.update(dt, W, H)
@@ -215,10 +217,14 @@ export class GameApp {
     for (const beam of activeLasers) {
       if (this.player.y > beam.fromY && Math.abs(this.player.x - beam.x) < 10) {
         if (this.player.hit()) {
-          this.explosions.spawn(this.player.x, this.player.y, 1.5)
-          screenShake.trigger(6)
+          this.explosions.spawn(this.player.x, this.player.y, 2.5)
+          screenShake.trigger(8)
+          hitstop.trigger(0.15)
           audioSystem.playPlayerHit()
           const s = gameStore.getState()
+          s.dropPower()
+          this.pickups.spawn(this.player.x - 30, this.player.y - 60, 'power')
+          this.pickups.spawn(this.player.x + 30, this.player.y - 60, 'power')
           s.loseLife()
           if (s.lives <= 1) s.setPhase('gameover')
         }
@@ -241,7 +247,9 @@ export class GameApp {
     this.explosions.update(dt)
     this.bombEffect.update(dt)
 
-    if (this.input.actions.bomb && !this.bombCooldown) this.triggerBomb()
+    if (this.input.actions.bomb && !this.bombCooldown && !this.player.isDead) {
+      this.triggerBomb()
+    }
   }
 
   private triggerBomb() {
@@ -251,6 +259,7 @@ export class GameApp {
 
     this.bombEffect.trigger()
     screenShake.trigger(8)
+    hitstop.trigger(0.08)
     audioSystem.playBomb()
     this.enemyBullets.releaseAll()
     this.bossBullets.releaseAll()
