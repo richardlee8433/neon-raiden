@@ -1,7 +1,9 @@
-import { Container, Graphics } from 'pixi.js'
+import { Container, Graphics, Texture, TilingSprite } from 'pixi.js'
 import { BgTheme } from '../data/stages'
 
 const BG_SPEED = 60
+const TILE_SPEED_MULT = 0.8   // distant nebula image scrolls slower…
+const STAR_SPEED_MULT = 1.6   // …near star specks scroll faster → parallax
 
 function mulberry32(seed: number) {
   return () => {
@@ -13,69 +15,36 @@ function mulberry32(seed: number) {
 }
 
 interface ThemeConfig {
-  bgColor: number
+  bgColor: number      // base fill, also the fallback if the image fails
+  bgImage: string      // seamless 512x512 tile (Screaming Brain Studios, CC0)
   starPalette: number[]
-  nebulaPatches?: { color: number; alpha: number }[]
-  rockCount?: number
 }
 
 const THEMES: Record<BgTheme, ThemeConfig> = {
   space: {
     bgColor: 0x000011,
+    bgImage: './assets/bg/stage1-blue.png',
     starPalette: [0xffffff, 0xaaccff, 0xffffff, 0xccddff],
   },
   nebula: {
     bgColor: 0x0a0020,
+    bgImage: './assets/bg/stage2-purple.png',
     starPalette: [0xff88ff, 0xcc66ff, 0x88aaff, 0xffaaff, 0xffffff],
-    nebulaPatches: [
-      { color: 0x6600aa, alpha: 0.08 },
-      { color: 0xaa0066, alpha: 0.06 },
-      { color: 0x4400cc, alpha: 0.07 },
-    ],
   },
   asteroid: {
-    bgColor: 0x050005,
-    starPalette: [0xff8844, 0xffaa66, 0xff6622, 0xffcc88, 0xffffff],
-    nebulaPatches: [
-      { color: 0x441100, alpha: 0.12 },
-      { color: 0x220800, alpha: 0.09 },
-    ],
-    rockCount: 18,
+    bgColor: 0x020805,
+    bgImage: './assets/bg/stage3-green.png',
+    starPalette: [0x88ffaa, 0xaaffcc, 0xffffff, 0xccffdd, 0xffffff],
   },
 }
 
-function buildLayer(
+/** Transparent layer of star specks — sits above the image for parallax. */
+function buildStarLayer(
   stageW: number, stageH: number,
-  config: ThemeConfig, seed: number,
+  palette: number[], seed: number,
 ): Graphics {
   const rng = mulberry32(seed)
   const g = new Graphics()
-
-  g.rect(0, 0, stageW, stageH).fill({ color: config.bgColor })
-
-  // Nebula / dust clouds
-  if (config.nebulaPatches) {
-    for (const patch of config.nebulaPatches) {
-      const cx = rng() * stageW
-      const cy = rng() * stageH
-      const rx = 80 + rng() * 120
-      const ry = 50 + rng() * 80
-      g.ellipse(cx, cy, rx, ry).fill({ color: patch.color, alpha: patch.alpha })
-    }
-  }
-
-  // Asteroid rocks (dark jagged circles)
-  if (config.rockCount) {
-    for (let i = 0; i < config.rockCount; i++) {
-      const rx = rng() * stageW
-      const ry = rng() * stageH
-      const r  = 4 + rng() * 18
-      g.circle(rx, ry, r).fill({ color: 0x221108, alpha: 0.6 + rng() * 0.3 })
-    }
-  }
-
-  // Stars — small squares in one batch per color
-  const palette = config.starPalette
   for (let ci = 0; ci < palette.length; ci++) {
     const count = ci === 0 ? 70 : 15
     for (let i = 0; i < count; i++) {
@@ -86,46 +55,72 @@ function buildLayer(
     }
     g.fill({ color: palette[ci], alpha: 0.5 + rng() * 0.5 })
   }
-
   return g
 }
 
 export class ScrollSystem {
-  private layers: Graphics[] = []
-  private tileH: number
-  private container: Container
-  private stageW: number
-  private stageH: number
+  private stars: Graphics[] = []
+  private tile: TilingSprite | null = null
+  private base: Graphics | null = null
+  private token = 0   // guards against a stale image landing after setTheme
 
-  constructor(container: Container, stageW: number, stageH: number, theme: BgTheme = 'space') {
-    this.container = container
-    this.stageW = stageW
-    this.stageH = stageH
-    this.tileH = stageH
+  constructor(
+    private container: Container,
+    private stageW: number,
+    private stageH: number,
+    theme: BgTheme = 'space',
+  ) {
     this.buildTheme(theme)
   }
 
   setTheme(theme: BgTheme) {
-    for (const layer of this.layers) this.container.removeChild(layer)
-    this.layers = []
+    for (const s of this.stars) this.container.removeChild(s)
+    if (this.tile) this.container.removeChild(this.tile)
+    if (this.base) this.container.removeChild(this.base)
+    this.stars = []
+    this.tile = null
+    this.base = null
     this.buildTheme(theme)
   }
 
   private buildTheme(theme: BgTheme) {
     const cfg = THEMES[theme]
-    const l0 = buildLayer(this.stageW, this.stageH, cfg, 42)
-    const l1 = buildLayer(this.stageW, this.stageH, cfg, 99)
+    const token = ++this.token
+
+    this.base = new Graphics()
+    this.base.rect(0, 0, this.stageW, this.stageH).fill({ color: cfg.bgColor })
+    this.container.addChildAt(this.base, 0)
+
+    const l0 = buildStarLayer(this.stageW, this.stageH, cfg.starPalette, 42)
+    const l1 = buildStarLayer(this.stageW, this.stageH, cfg.starPalette, 99)
     l0.y = 0
     l1.y = -this.stageH
-    this.container.addChildAt(l0, 0)
-    this.container.addChildAt(l1, 1)
-    this.layers = [l0, l1]
+    this.container.addChild(l0, l1)
+    this.stars = [l0, l1]
+
+    // Load the nebula tile via HTMLImageElement (Pixi's worker loader gets
+    // 403'd on VIVERSE); fall back silently to the solid base color.
+    const img = new Image()
+    img.onload = () => {
+      if (token !== this.token) return   // theme changed while loading
+      const sprite = new TilingSprite({
+        texture: Texture.from(img),
+        width: this.stageW,
+        height: this.stageH,
+      })
+      sprite.tileScale.set(this.stageW / img.width)
+      this.container.addChildAt(sprite, 1)   // above base, below stars
+      this.tile = sprite
+    }
+    img.onerror = () => console.warn(`[ScrollSystem] bg image failed: ${cfg.bgImage}`)
+    img.src = cfg.bgImage
   }
 
   update(dt: number) {
-    for (const layer of this.layers) {
-      layer.y += BG_SPEED * dt
-      if (layer.y >= this.tileH) layer.y -= this.tileH * 2
+    if (this.tile) this.tile.tilePosition.y += BG_SPEED * TILE_SPEED_MULT * dt
+    for (const s of this.stars) {
+      s.y += BG_SPEED * STAR_SPEED_MULT * dt
+      if (s.y >= this.stageH) s.y -= this.stageH * 2
     }
   }
 }

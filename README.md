@@ -30,9 +30,11 @@ npm run dev
 
 | Stage | Theme | Enemies | Boss HP |
 |---|---|---|---|
-| 1 — Deep Space | Dark blue starfield | Fighter · Scout · Bomber | 60 |
-| 2 — Nebula Field | Purple nebula clouds | Interceptor · Gunship | 80 |
-| 3 — Asteroid Belt | Red asteroid rocks | Elite · Carrier | 100 |
+| 1 — Deep Space | Teal-blue nebula | Fighter · Scout · Bomber | 60 |
+| 2 — Nebula Field | Vivid purple nebula | Interceptor · Gunship | 80 |
+| 3 — Asteroid Belt | Eerie green nebula | Elite · Carrier | 100 |
+
+Each stage scrolls a distinct seamless nebula image (Screaming Brain Studios, CC0) with a faster procedural star layer on top for parallax depth.
 
 Each stage ends with a 3-phase boss. Bosses get faster bullet patterns and higher speed per stage.
 
@@ -126,7 +128,7 @@ All audio — music included — is synthesized live via the **Web Audio API**, 
 | Post-processing | pixi-filters (AdvancedBloomFilter) |
 | State | Zustand |
 | Language | TypeScript |
-| Assets | Kenney Pixel Shmup (CC0) |
+| Assets | Kenney Pixel Shmup (CC0) · Screaming Brain Studios space backgrounds (CC0) |
 | Audio | Web Audio API (synthesized) |
 
 ---
@@ -149,7 +151,7 @@ src/
                 BulletPatterns.ts   — Polar-coordinate danmaku emitters (ring/spiral/flower/fan)
                 WaveSystem.ts       — Timed wave spawner per stage
                 CollisionSystem.ts  — AABB collision + graze detection
-                ScrollSystem.ts     — Themed scrolling starfield (3 themes)
+                ScrollSystem.ts     — Seamless nebula tile + parallax stars (3 themes)
                 AudioSystem.ts      — Web Audio synthesizer singleton
                 MusicSystem.ts      — Synthesized chiptune BGM sequencer
     fx/         Explosion.ts        — Frame-animation pool
@@ -177,4 +179,4 @@ src/
 
 ## License
 
-Code: MIT · Art: [Kenney Pixel Shmup](https://kenney.nl/assets/pixel-shmup) — CC0 (public domain)
+Code: MIT · Sprites: [Kenney Pixel Shmup](https://kenney.nl/assets/pixel-shmup) — CC0 · Backgrounds: [Screaming Brain Studios — Seamless Space Backgrounds](https://opengameart.org/content/seamless-space-backgrounds) — CC0
