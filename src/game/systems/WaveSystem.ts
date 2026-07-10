@@ -4,7 +4,10 @@ import { ENEMIES } from '../data/enemies'
 import { Enemy } from '../entities/Enemy'
 import { BulletPool } from '../entities/BulletPool'
 
-const POOL_SIZE = 60
+const POOL_SIZE = 96
+// Global spawn-density multiplier: every wave fields 50% more enemies,
+// so the screen stays busier without rewriting per-stage wave data.
+const DENSITY_MULT = 1.5
 
 export class WaveSystem {
   private enemies: Enemy[] = []
@@ -51,8 +54,9 @@ export class WaveSystem {
     const tex = this.textures.get(entry.type)
     if (!tex) return
 
-    const positions = formation(entry.formation, entry.count, 480)
-    for (let i = 0; i < entry.count; i++) {
+    const count = Math.round(entry.count * DENSITY_MULT)
+    const positions = formation(entry.formation, count, 480)
+    for (let i = 0; i < count; i++) {
       const enemy = this.enemies.find((e) => !e.active)
       if (!enemy) break
       const [x, y] = positions[i]

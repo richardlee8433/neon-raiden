@@ -8,7 +8,7 @@ import { gameStore } from '../../store/gameStore'
 
 const DMG_PER_SEC = 30
 // Bosses resist the beam, otherwise parking on one melts it in seconds
-const BOSS_DMG_MULT = 0.35
+const BOSS_DMG_MULT = 0.245
 
 export class LaserBeam {
   private g: Graphics
