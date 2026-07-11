@@ -94,19 +94,11 @@ export class CollisionSystem {
       const br = new Rectangle(bullet.sprite.x - 3, bullet.sprite.y - 3, 6, 6)
 
       if (intersects(br, player.hitboxWorld)) {
+        // Just register the hit — death (or deathbomb cancel) resolves in
+        // GameApp, so the consequences live in exactly one place.
         if (!player.hit()) continue
         const pool = enemyBullets.active.includes(bullet) ? enemyBullets : bossBullets
         pool.release(bullet)
-        explosions.spawn(player.x, player.y, 2.5)
-        screenShake.trigger(8)
-        hitstop.trigger(0.15)
-        audioSystem.playPlayerHit()
-        const s = gameStore.getState()
-        s.dropPower()
-        pickups.spawn(player.x - 30, player.y - 60, 'power')
-        pickups.spawn(player.x + 30, player.y - 60, 'power')
-        s.loseLife()
-        if (s.lives <= 1) s.setPhase('gameover')
         break
       }
 

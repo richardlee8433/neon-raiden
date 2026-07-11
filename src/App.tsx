@@ -13,7 +13,9 @@ export default function App() {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
   const gameRef      = useRef<GameApp | null>(null)
   const phase        = useGameStore((s) => s.phase)
+  const paused       = useGameStore((s) => s.paused)
   const toggleSound  = useGameStore((s) => s.toggleSound)
+  const togglePause  = useGameStore((s) => s.togglePause)
   const [scale, setScale] = useState(1)
 
   useEffect(() => {
@@ -36,12 +38,15 @@ export default function App() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // 'M' key toggles mute globally
+  // 'M' toggles mute, 'P' / Escape toggles pause
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.code === 'KeyM') toggleSound() }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyM') toggleSound()
+      if (e.code === 'KeyP' || e.code === 'Escape') togglePause()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggleSound])
+  }, [toggleSound, togglePause])
 
   return (
     <div style={{
@@ -57,6 +62,29 @@ export default function App() {
       {phase === 'gameover'   && <GameOverScreen />}
       {phase === 'stageclear' && <StageClearScreen />}
       {phase === 'advancing'  && <StageAnnouncement />}
+      {paused && phase === 'playing' && (
+        <div
+          onClick={togglePause}
+          style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,10,0.72)',
+            color: '#fff', fontFamily: 'monospace',
+            userSelect: 'none', cursor: 'pointer', zIndex: 20,
+          }}
+        >
+          <div style={{
+            fontSize: 40, letterSpacing: 10, fontWeight: 'bold',
+            textShadow: '0 0 16px #44ddff',
+          }}>
+            PAUSED
+          </div>
+          <div style={{ marginTop: 16, fontSize: 12, color: '#88aacc', letterSpacing: 3 }}>
+            PRESS P / ESC OR TAP TO RESUME
+          </div>
+        </div>
+      )}
     </div>
   )
 }

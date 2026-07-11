@@ -10,6 +10,10 @@ const BANK_ANGLE = 0.22        // max hull tilt (radians) when strafing
 const RESPAWN_DELAY = 1.1      // seconds off-screen after death
 const RESPAWN_FLY_SPEED = 300  // fly-in speed from the bottom edge
 const RESPAWN_INVINCIBLE = 3
+// Deathbomb: after a fatal hit the death is held for a brief window; bombing
+// within it cancels the death entirely (a classic hardcore-shmup mechanic).
+const DEATHBOMB_WINDOW = 0.15
+const DEATHBOMB_IFRAMES = 1.5
 // Danmaku-style: only this tiny box at the ship's core takes hits,
 // so wings can brush through bullet curtains.
 const HITBOX_SIZE = 6
@@ -41,8 +45,10 @@ export class Player {
   private flashTimer = 0
   private focusDot: Graphics
   private dotPulse = 0
-  private state: 'alive' | 'dead' | 'respawning' = 'alive'
+  private state: 'alive' | 'grace' | 'dead' | 'respawning' = 'alive'
   private respawnTimer = 0
+  private graceTimer = 0
+  private justDied = false
   private tilt = 0
 
   constructor(
@@ -82,22 +88,68 @@ export class Player {
   }
 
   get isDead() { return this.state !== 'alive' }
+  get inGrace() { return this.state === 'grace' }
 
   /**
-   * Returns true if the hit connects — the ship explodes and respawns from
-   * the bottom edge after a short delay. Death costs power (handled by the
-   * caller, which also scatters recoverable pickups).
+   * Registers a fatal hit by opening the deathbomb window. Returns true if it
+   * connects. Death isn't final yet — GameApp resolves it via consumeJustDied()
+   * once the window lapses, or cancelDeath() cancels it if the player bombs.
    */
   hit() {
     if (this.state !== 'alive' || this.invincible > 0) return false
-    this.state = 'dead'
-    this.respawnTimer = RESPAWN_DELAY
-    this.sprite.visible = false
-    this.focusDot.visible = false
+    this.state = 'grace'
+    this.graceTimer = DEATHBOMB_WINDOW
     return true
   }
 
+  /** Deathbomb — cancel a pending death and grant brief invincibility. */
+  cancelDeath() {
+    if (this.state !== 'grace') return
+    this.state = 'alive'
+    this.invincible = DEATHBOMB_IFRAMES
+    this.flashTimer = 0
+    this.sprite.tint = 0xffffff
+  }
+
+  /** True on the single frame the death becomes final; GameApp runs the
+   *  explosion / power-drop / life-loss consequences. */
+  consumeJustDied() {
+    if (!this.justDied) return false
+    this.justDied = false
+    return true
+  }
+
+  /** Restore to a clean living state for a new game. */
+  reset() {
+    this.state = 'alive'
+    this.justDied = false
+    this.graceTimer = 0
+    this.invincible = 0
+    this.tilt = 0
+    this.sprite.rotation = 0
+    this.sprite.visible = true
+    this.sprite.alpha = 1
+    this.sprite.tint = 0xffffff
+    this.sprite.x = this.stageW / 2
+    this.sprite.y = this.stageH * 0.8
+  }
+
   update(dt: number, actions: Actions) {
+    // Deathbomb window: hold the death for a beat, flashing red so the player
+    // registers the danger and can still bomb out of it.
+    if (this.state === 'grace') {
+      this.graceTimer -= dt
+      this.sprite.tint = Math.sin(this.graceTimer * 80) > 0 ? 0xff4444 : 0xffffff
+      if (this.graceTimer <= 0) {
+        this.sprite.tint = 0xffffff
+        this.state = 'dead'
+        this.justDied = true
+        this.respawnTimer = RESPAWN_DELAY
+        this.sprite.visible = false
+        this.focusDot.visible = false
+      }
+      return
+    }
     // Death → respawn sequence: hidden for a beat, then fly in from below
     if (this.state === 'dead') {
       this.respawnTimer -= dt

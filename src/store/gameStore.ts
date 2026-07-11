@@ -15,6 +15,7 @@ interface GameState {
   bossActive: boolean
   bossWarning: boolean
   soundEnabled: boolean
+  paused: boolean
 
   addScore: (n: number) => void
   addGraze: () => void
@@ -30,6 +31,7 @@ interface GameState {
   setBossWarning: (v: boolean) => void
   advanceStage: () => void
   toggleSound: () => void
+  togglePause: () => void
   reset: (keepHi?: boolean) => void
 }
 
@@ -37,9 +39,11 @@ const freshPlay = {
   score: 0, graze: 0, lives: 3, bombs: 3, power: 0, laserPower: 0,
   stage: 1, phase: 'playing' as const,
   bossHp: 0, bossMaxHp: 1, bossActive: false, bossWarning: false,
+  paused: false,
 }
 
 const SOUND_KEY = 'raiden.soundEnabled'
+const HISCORE_KEY = 'raiden.hiScore'
 
 function loadSoundPref(): boolean {
   try {
@@ -55,19 +59,38 @@ function saveSoundPref(on: boolean) {
   } catch { /* ignore */ }
 }
 
+function loadHiScore(): number {
+  try {
+    const v = parseInt(localStorage.getItem(HISCORE_KEY) ?? '0', 10)
+    return Number.isFinite(v) ? v : 0
+  } catch {
+    return 0
+  }
+}
+
+function saveHiScore(n: number) {
+  try {
+    localStorage.setItem(HISCORE_KEY, String(n))
+  } catch { /* ignore */ }
+}
+
 export const useGameStore = create<GameState>((set, get) => ({
   ...freshPlay,
-  hiScore: 0,
+  hiScore: loadHiScore(),
   phase: 'title',
   soundEnabled: loadSoundPref(),
 
   addScore: (n) => set((s) => {
     const score = s.score + n
-    return { score, hiScore: Math.max(score, s.hiScore) }
+    const hiScore = Math.max(score, s.hiScore)
+    if (hiScore !== s.hiScore) saveHiScore(hiScore)   // persist each new record
+    return { score, hiScore }
   }),
   addGraze: () => set((s) => {
     const score = s.score + 50
-    return { graze: s.graze + 1, score, hiScore: Math.max(score, s.hiScore) }
+    const hiScore = Math.max(score, s.hiScore)
+    if (hiScore !== s.hiScore) saveHiScore(hiScore)
+    return { graze: s.graze + 1, score, hiScore }
   }),
   loseLife: () => set((s) => ({ lives: Math.max(0, s.lives - 1) })),
   addLife: () => set((s) => ({ lives: Math.min(5, s.lives + 1) })),
@@ -80,7 +103,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s) => ({ bombs: Math.max(0, s.bombs - 1) }))
     return true
   },
-  setPhase: (phase) => set({ phase }),
+  setPhase: (phase) => set((s) => {
+    // Persist the record at the end of a run
+    if (phase === 'gameover' || phase === 'title') saveHiScore(s.hiScore)
+    return { phase, paused: false }
+  }),
   setBossHp: (hp, max) => set({ bossHp: hp, bossMaxHp: max }),
   setBossActive: (v) => set({ bossActive: v }),
   setBossWarning: (v) => set({ bossWarning: v }),
@@ -93,6 +120,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const soundEnabled = !s.soundEnabled
     saveSoundPref(soundEnabled)
     return { soundEnabled }
+  }),
+  togglePause: () => set((s) => {
+    if (s.phase !== 'playing') return {}   // pausing only makes sense mid-game
+    return { paused: !s.paused }
   }),
   reset: (keepHi = true) => set((s) => ({
     ...freshPlay,

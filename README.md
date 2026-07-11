@@ -22,6 +22,7 @@ npm run dev
 | Focus (slow, shows hitbox) | Hold Shift |
 | Fire | Space |
 | Bomb (screen clear) | X / B |
+| Pause | P / Esc (tap overlay to resume) |
 | Mute / Unmute | M or 🔊 button |
 
 ---
@@ -72,6 +73,12 @@ Destroy enemies to drop **P** (power) and **B** (bomb) pickups.
 | 2 | 3 | ±15° fan |
 | 3 | 4 | ±8° / ±20° double pair |
 | 4–5 | 5 | Full fan + max fire rate |
+
+**Deathbomb** — a fatal hit doesn't kill instantly: the ship flashes red for a 0.15s grace window, and bombing within it cancels the death (spending one bomb, granting brief invincibility) — a classic hardcore-shmup safety net.
+
+**Death penalty & respawn** — dying drops two power levels (some scatter back as recoverable pickups at the crash site), then the ship flies in from the bottom edge with invincibility frames.
+
+**High-score & pause** — your best score persists across sessions (`localStorage`); P / Esc pauses and dims the whole scene.
 
 ---
 
@@ -141,7 +148,7 @@ src/
     core/       GameApp.ts          — Pixi Application, main ticker, stage transitions
     data/       stages.ts           — Per-stage wave/boss config
                 enemies.ts          — Enemy stat table
-    entities/   Player.ts           — Movement, focus mode, 6px hitbox, multi-shot, i-frames
+    entities/   Player.ts           — Movement, focus, 6px hitbox, banking, deathbomb, respawn
                 Enemy.ts            — Move paths: straight/zigzag/dive/diagonal · fire patterns
                 Boss.ts             — 3-phase danmaku boss with per-stage scaling
                 BulletPool.ts       — Object pool (zero new in game loop)

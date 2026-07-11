@@ -139,8 +139,7 @@ export class GameApp {
     this.bossBullets.releaseAll()
     this.pickups.releaseAll()
     this.gems.releaseAll()
-    this.player['sprite'].x = W / 2
-    this.player['sprite'].y = H * 0.8
+    this.player.reset()
     this.transitioning = false
     this.bossCountdown = -1
     gameStore.getState().setBossWarning(false)
@@ -169,7 +168,9 @@ export class GameApp {
   }
 
   private tick(dt: number) {
-    const phase = gameStore.getState().phase
+    const state = gameStore.getState()
+    if (state.paused) return   // freeze the whole scene while paused
+    const phase = state.phase
     screenShake.update(dt, this.app.stage)
     this.scroll.update(dt)
     if (phase !== 'playing') return
@@ -177,6 +178,7 @@ export class GameApp {
 
     this.input.update()
     this.player.update(dt, this.input.actions)
+    if (this.player.consumeJustDied()) this.onPlayerDeath()
     this.exhaust.update(dt, this.player.x, this.player.y, !this.player.isDead)
     this.bulletTrail.update(this.playerBullets)
     this.playerBullets.update(dt, W, H)
@@ -213,21 +215,10 @@ export class GameApp {
       this.gems,
     )
 
-    // Enemy laser hits on player
+    // Enemy laser hits on player (registers a hit; death resolves below)
     for (const beam of activeLasers) {
       if (this.player.y > beam.fromY && Math.abs(this.player.x - beam.x) < 10) {
-        if (this.player.hit()) {
-          this.explosions.spawn(this.player.x, this.player.y, 2.5)
-          screenShake.trigger(8)
-          hitstop.trigger(0.15)
-          audioSystem.playPlayerHit()
-          const s = gameStore.getState()
-          s.dropPower()
-          this.pickups.spawn(this.player.x - 30, this.player.y - 60, 'power')
-          this.pickups.spawn(this.player.x + 30, this.player.y - 60, 'power')
-          s.loseLife()
-          if (s.lives <= 1) s.setPhase('gameover')
-        }
+        this.player.hit()
         break
       }
     }
@@ -247,9 +238,30 @@ export class GameApp {
     this.explosions.update(dt)
     this.bombEffect.update(dt)
 
-    if (this.input.actions.bomb && !this.bombCooldown && !this.player.isDead) {
-      this.triggerBomb()
+    if (this.input.actions.bomb && !this.bombCooldown) {
+      if (this.player.inGrace) {
+        // Deathbomb: spend a bomb to cancel a pending death
+        if (gameStore.getState().bombs > 0) {
+          this.player.cancelDeath()
+          this.triggerBomb()
+        }
+      } else if (!this.player.isDead) {
+        this.triggerBomb()
+      }
     }
+  }
+
+  private onPlayerDeath() {
+    this.explosions.spawn(this.player.x, this.player.y, 2.5)
+    screenShake.trigger(8)
+    hitstop.trigger(0.15)
+    audioSystem.playPlayerHit()
+    const s = gameStore.getState()
+    s.dropPower()
+    this.pickups.spawn(this.player.x - 30, this.player.y - 60, 'power')
+    this.pickups.spawn(this.player.x + 30, this.player.y - 60, 'power')
+    s.loseLife()
+    if (s.lives <= 1) s.setPhase('gameover')
   }
 
   private triggerBomb() {
