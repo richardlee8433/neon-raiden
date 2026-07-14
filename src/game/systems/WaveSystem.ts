@@ -29,10 +29,13 @@ export class WaveSystem {
         img.src = src
       })
 
-    for (const [key, def] of Object.entries(ENEMIES)) {
-      const tex = await loadTex(def.sprite)
-      this.textures.set(key, tex)
-    }
+    // Parallel: sequential awaits over a real CDN added seconds of startup
+    // during which a quick START press could race past initialization.
+    await Promise.all(
+      Object.entries(ENEMIES).map(async ([key, def]) => {
+        this.textures.set(key, await loadTex(def.sprite))
+      }),
+    )
     const defaultTex = this.textures.get('fighter')!
     for (let i = 0; i < POOL_SIZE; i++) {
       this.enemies.push(new Enemy(this.container, defaultTex))

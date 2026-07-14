@@ -127,6 +127,15 @@ export class GameApp {
       }
     })
 
+    // Catch-up: on slow networks (VIVERSE/Netlify CDN) the player can press
+    // START before init reaches this line — that title→playing transition
+    // happened with no subscriber, so no stage was ever loaded and no enemies
+    // would spawn. If we're already mid-"playing", start the stage now.
+    if (gameStore.getState().phase === 'playing') {
+      this.startStage(gameStore.getState().stage)
+      musicSystem.start()
+    }
+
     this.app.ticker.add(({ deltaMS }) => {
       const dt = Math.min(deltaMS / 1000, 0.05)
       this.tick(dt)
