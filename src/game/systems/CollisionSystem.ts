@@ -73,8 +73,11 @@ export class CollisionSystem {
           screenShake.trigger(died ? 5 : 3)
           audioSystem.playBossHurt()
           if (died) {
-            explosions.spawn(boss.sprite.x, boss.sprite.y, 4)
-            hitstop.trigger(0.3)
+            // kill reward: clear the boss's bullets; the big hitstop and
+            // white-out belong to the death-spectacle finale in Boss.update
+            explosions.spawn(boss.sprite.x, boss.sprite.y, 2.5)
+            hitstop.trigger(0.12)
+            bossBullets.releaseAll()
             gems.spawn(boss.sprite.x, boss.sprite.y, 16)
             gems.magnetizeAll()
           }

@@ -15,6 +15,7 @@ import { screenShake } from '../fx/ScreenShake'
 import { hitstop } from '../fx/Hitstop'
 import { BulletTrail } from '../fx/BulletTrail'
 import { LaserBeam } from '../fx/LaserBeam'
+import { Shockwave } from '../fx/Shockwave'
 import { makeGlowBulletTexture, makeGemTexture } from '../fx/GlowTexture'
 import { GemPool } from '../entities/Gem'
 import { musicSystem } from '../systems/MusicSystem'
@@ -44,6 +45,7 @@ export class GameApp {
   private bulletTrail!: BulletTrail
   private laser!: LaserBeam
   private exhaust!: EngineExhaust
+  private shockwave!: Shockwave
 
   private bgLayer!: Container
   private gameLayer!: Container
@@ -104,6 +106,7 @@ export class GameApp {
     this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
+    this.shockwave  = new Shockwave(this.fxLayer)
     this.exhaust    = new EngineExhaust(
       this.bulletLayer, makeGlowBulletTexture(this.app.renderer, 0x44aaff, 3.5))
 
@@ -200,7 +203,7 @@ export class GameApp {
         gameStore.getState().setBossWarning(false)
         const stage = gameStore.getState().stage
         const cfg = STAGES[stage - 1] ?? STAGES[0]
-        this.boss.spawn(cfg.boss)
+        this.boss.spawn(cfg.boss, stage)
       }
     }
 
@@ -223,7 +226,12 @@ export class GameApp {
       }
     }
 
-    if (this.boss.active) this.boss.update(dt, this.player.x, this.player.y, this.bossBullets)
+    if (this.boss.active) {
+      this.boss.update(
+        dt, this.player.x, this.player.y,
+        this.bossBullets, this.explosions, this.bombEffect,
+      )
+    }
 
     this.pickups.update(dt, this.player.x, this.player.y, H)
     this.gems.update(dt, this.player.x, this.player.y, H)
@@ -237,6 +245,7 @@ export class GameApp {
 
     this.explosions.update(dt)
     this.bombEffect.update(dt)
+    this.shockwave.update(dt)
 
     if (this.input.actions.bomb && !this.bombCooldown) {
       if (this.player.inGrace) {
@@ -269,7 +278,8 @@ export class GameApp {
     this.bombCooldown = true
     setTimeout(() => { this.bombCooldown = false }, 800)
 
-    this.bombEffect.trigger()
+    // Expanding shockwave from the ship instead of a flat white flash
+    this.shockwave.trigger(this.player.x, this.player.y)
     screenShake.trigger(8)
     hitstop.trigger(0.08)
     audioSystem.playBomb()
