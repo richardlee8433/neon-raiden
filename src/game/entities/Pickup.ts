@@ -1,6 +1,7 @@
 import { Container, Sprite, Texture } from 'pixi.js'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
+import { SPRITE_SCALE } from '../config'
 
 export type PickupType = 'power' | 'bomb' | 'life' | 'laser'
 
@@ -11,7 +12,7 @@ interface PickupInstance {
 }
 
 const FALL_SPEED = 80
-const COLLECT_RADIUS = 28
+const COLLECT_RADIUS = 28 * SPRITE_SCALE
 
 export class PickupPool {
   private pool: PickupInstance[] = []
@@ -27,7 +28,7 @@ export class PickupPool {
     for (let i = 0; i < size; i++) {
       const sprite = new Sprite(texPower)
       sprite.anchor.set(0.5)
-      sprite.scale.set(1.8)
+      sprite.scale.set(1.8 * SPRITE_SCALE)
       sprite.visible = false
       container.addChild(sprite)
       this.pool.push({ sprite, active: false, type: 'power' })

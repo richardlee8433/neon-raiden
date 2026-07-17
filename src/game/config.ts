@@ -28,3 +28,15 @@ function computeStage(): { w: number; h: number } {
 const stage = computeStage()
 export const STAGE_W = stage.w
 export const STAGE_H = stage.h
+
+// How many classic 480-wide columns the field spans. Horizontal formations
+// multiply their counts by this so a wide field keeps the same enemies per
+// screen-width — otherwise the same wave spread over 3x the width feels empty.
+export const FIELD_RATIO = STAGE_W / BASE_W
+
+// Ships/bullets scale up on the wide landscape field so they stay readable on
+// a big monitor. Deliberately NOT the full FIELD_RATIO: desktop height (900)
+// is close to portrait height, so proportional scaling would crowd the
+// vertical axis. Everything danmaku-related (hitboxes, bullet size, graze)
+// scales by this same factor, keeping those relationships intact.
+export const SPRITE_SCALE = STAGE_W > 640 ? 1.4 : 1

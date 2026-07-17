@@ -1,6 +1,7 @@
 import { Container, Sprite, Texture } from 'pixi.js'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
+import { SPRITE_SCALE } from '../config'
 
 interface Gem {
   sprite: Sprite
@@ -12,8 +13,8 @@ interface Gem {
 
 const GEM_SCORE = 100
 const FALL_SPEED = 90
-const COLLECT_RADIUS = 26
-const PROXIMITY_RADIUS = 70      // gems this close always latch on
+const COLLECT_RADIUS = 26 * SPRITE_SCALE
+const PROXIMITY_RADIUS = 70 * SPRITE_SCALE   // gems this close always latch on
 const VACUUM_LINE = 0.28         // player above stageH*this → vacuum the field
 const MAGNET_ACCEL = 2600
 const MAGNET_MAX = 780

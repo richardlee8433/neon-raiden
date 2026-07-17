@@ -4,9 +4,9 @@ import { ENEMIES, EnemyDef } from '../data/enemies'
 import { Enemy } from '../entities/Enemy'
 import { BulletPool } from '../entities/BulletPool'
 import { gameStore } from '../../store/gameStore'
-import { STAGE_W } from '../config'
+import { STAGE_W, STAGE_H, FIELD_RATIO } from '../config'
 
-const POOL_SIZE = 96
+const POOL_SIZE = 160
 // Global spawn-density multiplier: every wave fields 50% more enemies,
 // so the screen stays busier without rewriting per-stage wave data.
 const DENSITY_MULT = 1.5
@@ -71,8 +71,12 @@ export class WaveSystem {
       }
     }
 
-    const count = Math.round(entry.count * DENSITY_MULT)
-    const positions = formation(entry.formation, count, STAGE_W)
+    // Horizontal formations widen with the field, so scale their counts to
+    // keep enemies-per-screen-width constant. The side columns are vertical —
+    // scaling those by width would stack them off the bottom of the screen.
+    const horizontal = entry.formation === 'line-top' || entry.formation === 'v-shape'
+    const count = Math.round(entry.count * DENSITY_MULT * (horizontal ? FIELD_RATIO : 1))
+    const positions = formation(entry.formation, count, STAGE_W, STAGE_H)
     for (let i = 0; i < count; i++) {
       const enemy = this.enemies.find((e) => !e.active)
       if (!enemy) break
@@ -115,31 +119,35 @@ export class WaveSystem {
   }
 }
 
+/** Lays out `count` enemies so the shape always fits inside the stage. */
 function formation(
   type: WaveEntry['formation'],
   count: number,
   stageW: number,
+  stageH: number,
 ): [number, number][] {
   const out: [number, number][] = []
-  // Wide battlefields (landscape stages) spread formations further apart
-  const spacing = Math.min(Math.max(70, stageW / 8), (stageW - 100) / Math.max(count - 1, 1))
 
   switch (type) {
     case 'line-top': {
+      const spacing = Math.min(70, (stageW - 100) / Math.max(count - 1, 1))
       const totalW = spacing * (count - 1)
       const startX = (stageW - totalW) / 2
       for (let i = 0; i < count; i++) out.push([startX + i * spacing, -30])
       break
     }
     case 'line-left':
-      for (let i = 0; i < count; i++) out.push([-30, 80 + i * 55])
+    case 'line-right': {
+      // Vertical column down one edge — space it to fit the stage height
+      const x = type === 'line-left' ? -30 : stageW + 30
+      const spacing = Math.min(55, (stageH * 0.6) / Math.max(count - 1, 1))
+      for (let i = 0; i < count; i++) out.push([x, 80 + i * spacing])
       break
-    case 'line-right':
-      for (let i = 0; i < count; i++) out.push([stageW + 30, 80 + i * 55])
-      break
+    }
     case 'v-shape': {
       const half = Math.floor(count / 2)
-      const arm = Math.max(55, stageW / 10)
+      // Arm length fits the widest wing inside the stage
+      const arm = half > 0 ? Math.min(70, (stageW / 2 - 60) / half) : 0
       for (let i = 0; i < count; i++) {
         const side = i < half ? i : count - 1 - i
         const x = (stageW / 2) + (i < half ? -1 : 1) * side * arm

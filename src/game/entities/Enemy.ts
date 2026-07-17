@@ -3,7 +3,7 @@ import { EnemyDef } from '../data/enemies'
 import { BulletPool } from './BulletPool'
 import { EnemyPath } from '../data/stages'
 import { fireRing, fireAimedFan } from '../systems/BulletPatterns'
-import { STAGE_W } from '../config'
+import { STAGE_W, SPRITE_SCALE } from '../config'
 
 export type { EnemyPath }
 
@@ -60,7 +60,7 @@ export class Enemy {
     this.sprite.texture = texture
     this.sprite.x = x
     this.sprite.y = y
-    this.sprite.scale.set(def.scale)
+    this.sprite.scale.set(def.scale * SPRITE_SCALE)
     this.sprite.rotation = Math.PI   // flip to face downward (avoids negative-scale GPU issues)
     this.sprite.alpha = 1
     this.sprite.tint = 0xffffff

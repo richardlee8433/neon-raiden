@@ -11,6 +11,7 @@ import { gameStore } from '../../store/gameStore'
 import { audioSystem } from './AudioSystem'
 import { screenShake } from '../fx/ScreenShake'
 import { hitstop } from '../fx/Hitstop'
+import { SPRITE_SCALE } from '../config'
 
 function intersects(a: Rectangle, b: Rectangle): boolean {
   return (
@@ -21,7 +22,9 @@ function intersects(a: Rectangle, b: Rectangle): boolean {
 
 // Bullets passing within this box around the hitbox (without hitting)
 // count as a graze: small score reward for flying dangerously close.
-const GRAZE_RADIUS = 22
+// Scales with the sprites so grazing feels identical on both layouts.
+const GRAZE_RADIUS = 22 * SPRITE_SCALE
+const BULLET_R = 3 * SPRITE_SCALE   // half-size of a bullet's collision box
 
 const ENEMY_LIFE_CHANCE   = 0.04   // 4%
 const ENEMY_BOMB_CHANCE   = 0.10   // 6%
@@ -43,7 +46,10 @@ export class CollisionSystem {
   ) {
     // ── Player bullets vs enemies ──────────────────────────────────────────
     for (const bullet of playerBullets.active) {
-      const br = new Rectangle(bullet.sprite.x - 3, bullet.sprite.y - 6, 6, 12)
+      const br = new Rectangle(
+        bullet.sprite.x - BULLET_R, bullet.sprite.y - BULLET_R * 2,
+        BULLET_R * 2, BULLET_R * 4,
+      )
 
       for (const enemy of enemies) {
         if (!intersects(br, enemy.hitboxWorld)) continue
@@ -97,7 +103,10 @@ export class CollisionSystem {
 
     const allHostileBullets = [...enemyBullets.active, ...bossBullets.active]
     for (const bullet of allHostileBullets) {
-      const br = new Rectangle(bullet.sprite.x - 3, bullet.sprite.y - 3, 6, 6)
+      const br = new Rectangle(
+        bullet.sprite.x - BULLET_R, bullet.sprite.y - BULLET_R,
+        BULLET_R * 2, BULLET_R * 2,
+      )
 
       if (intersects(br, player.hitboxWorld)) {
         // Just register the hit — death (or deathbomb cancel) resolves in

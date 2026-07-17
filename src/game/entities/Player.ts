@@ -3,7 +3,7 @@ import { Actions } from '../systems/InputSystem'
 import { BulletPool } from './BulletPool'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
-import { STAGE_W } from '../config'
+import { STAGE_W, SPRITE_SCALE } from '../config'
 
 // Wide (landscape) battlefields need proportionally faster strafing or
 // crossing the field feels sluggish; portrait keeps the classic 300.
@@ -18,8 +18,9 @@ const RESPAWN_INVINCIBLE = 3
 const DEATHBOMB_WINDOW = 0.15
 const DEATHBOMB_IFRAMES = 1.5
 // Danmaku-style: only this tiny box at the ship's core takes hits,
-// so wings can brush through bullet curtains.
-const HITBOX_SIZE = 6
+// so wings can brush through bullet curtains. Scales with the sprites so
+// the hitbox stays the same fraction of the ship on every layout.
+const HITBOX_SIZE = 6 * SPRITE_SCALE
 const BULLET_SPEED = 620
 
 // Each entry is an array of [vx_norm, vy_norm] direction vectors per power level.
@@ -65,15 +66,15 @@ export class Player {
     this.sprite.anchor.set(0.5)
     this.sprite.x = stageW / 2
     this.sprite.y = stageH * 0.8
-    this.sprite.scale.set(2)
+    this.sprite.scale.set(2 * SPRITE_SCALE)
     container.addChild(this.sprite)
 
     const half = HITBOX_SIZE / 2
     this.hitbox = new Rectangle(-half, -half, HITBOX_SIZE, HITBOX_SIZE)
 
     this.focusDot = new Graphics()
-    this.focusDot.circle(0, 0, 5.5).fill({ color: 0xff3366, alpha: 0.55 })
-    this.focusDot.circle(0, 0, 2.5).fill(0xffffff)
+    this.focusDot.circle(0, 0, 5.5 * SPRITE_SCALE).fill({ color: 0xff3366, alpha: 0.55 })
+    this.focusDot.circle(0, 0, 2.5 * SPRITE_SCALE).fill(0xffffff)
     this.focusDot.visible = false
     container.addChild(this.focusDot)
   }

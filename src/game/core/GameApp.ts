@@ -25,7 +25,7 @@ import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
 
-import { STAGE_W as W, STAGE_H as H } from '../config'
+import { STAGE_W as W, STAGE_H as H, SPRITE_SCALE } from '../config'
 
 export class GameApp {
   private app: Application
@@ -95,25 +95,25 @@ export class GameApp {
 
     // Neon glow bullets (danmaku-style): enemy fire must pop against the
     // dark background and read differently from the player's shots.
-    const enemyBulletTex = makeGlowBulletTexture(this.app.renderer, 0xff2e88, 5)
-    const bossBulletTex  = makeGlowBulletTexture(this.app.renderer, 0x33eeff, 6)
+    const enemyBulletTex = makeGlowBulletTexture(this.app.renderer, 0xff2e88, 5 * SPRITE_SCALE)
+    const bossBulletTex  = makeGlowBulletTexture(this.app.renderer, 0x33eeff, 6 * SPRITE_SCALE)
 
     this.bulletTrail   = new BulletTrail(this.bulletLayer)
-    this.playerBullets = new BulletPool(this.bulletLayer, assets.playerBullet, 200)
-    this.enemyBullets  = new BulletPool(this.bulletLayer, enemyBulletTex, 500)
+    this.playerBullets = new BulletPool(this.bulletLayer, assets.playerBullet, 300)
+    this.enemyBullets  = new BulletPool(this.bulletLayer, enemyBulletTex, 1000)
     this.bossBullets   = new BulletPool(this.bulletLayer, bossBulletTex,  200)
 
     this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
     this.boss      = new Boss(this.gameLayer)
     this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb, assets.pickupLife, assets.pickupLaser)
-    this.gems      = new GemPool(this.gameLayer, makeGemTexture(this.app.renderer))
+    this.gems      = new GemPool(this.gameLayer, makeGemTexture(this.app.renderer, 7 * SPRITE_SCALE))
     this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
     this.shockwave  = new Shockwave(this.fxLayer)
     this.floats     = new FloatingTextPool(this.fxLayer)
     this.exhaust    = new EngineExhaust(
-      this.bulletLayer, makeGlowBulletTexture(this.app.renderer, 0x44aaff, 3.5))
+      this.bulletLayer, makeGlowBulletTexture(this.app.renderer, 0x44aaff, 3.5 * SPRITE_SCALE))
 
     this.waves = new WaveSystem(this.gameLayer)
     await this.waves.loadTextures()

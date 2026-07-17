@@ -9,7 +9,7 @@ import { screenShake } from '../fx/ScreenShake'
 import { hitstop } from '../fx/Hitstop'
 import { audioSystem } from '../systems/AudioSystem'
 
-import { STAGE_W, STAGE_H } from '../config'
+import { STAGE_W, STAGE_H, SPRITE_SCALE } from '../config'
 
 const TARGET_Y = 120
 
@@ -65,7 +65,7 @@ export class Boss {
     this.dyingTimer = 0
     this.chainTimer = 0
     this.finaleDone = false
-    this.sprite.scale.set(3, -3)
+    this.sprite.scale.set(3 * SPRITE_SCALE, -3 * SPRITE_SCALE)
     this.sprite.x = STAGE_W / 2
     this.sprite.y = -80
     this.sprite.alpha = 1
