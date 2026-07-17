@@ -4,6 +4,7 @@ import { ENEMIES, EnemyDef } from '../data/enemies'
 import { Enemy } from '../entities/Enemy'
 import { BulletPool } from '../entities/BulletPool'
 import { gameStore } from '../../store/gameStore'
+import { STAGE_W } from '../config'
 
 const POOL_SIZE = 96
 // Global spawn-density multiplier: every wave fields 50% more enemies,
@@ -71,7 +72,7 @@ export class WaveSystem {
     }
 
     const count = Math.round(entry.count * DENSITY_MULT)
-    const positions = formation(entry.formation, count, 480)
+    const positions = formation(entry.formation, count, STAGE_W)
     for (let i = 0; i < count; i++) {
       const enemy = this.enemies.find((e) => !e.active)
       if (!enemy) break
@@ -120,7 +121,8 @@ function formation(
   stageW: number,
 ): [number, number][] {
   const out: [number, number][] = []
-  const spacing = Math.min(70, (stageW - 80) / Math.max(count - 1, 1))
+  // Wide battlefields (landscape stages) spread formations further apart
+  const spacing = Math.min(Math.max(70, stageW / 8), (stageW - 100) / Math.max(count - 1, 1))
 
   switch (type) {
     case 'line-top': {
@@ -137,9 +139,10 @@ function formation(
       break
     case 'v-shape': {
       const half = Math.floor(count / 2)
+      const arm = Math.max(55, stageW / 10)
       for (let i = 0; i < count; i++) {
         const side = i < half ? i : count - 1 - i
-        const x = (stageW / 2) + (i < half ? -1 : 1) * side * 55
+        const x = (stageW / 2) + (i < half ? -1 : 1) * side * arm
         out.push([x, -30 - side * 20])
       }
       break

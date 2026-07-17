@@ -1,7 +1,7 @@
 import { Container, Graphics } from 'pixi.js'
 
 const DURATION = 0.55
-const MAX_RADIUS = 1150   // covers the full stage from any origin
+const MAX_RADIUS = 1900   // covers even a wide landscape stage from any origin
 
 /**
  * Expanding ring blast for the bomb: a thick white leading edge with a

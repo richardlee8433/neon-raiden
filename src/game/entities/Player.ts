@@ -3,8 +3,11 @@ import { Actions } from '../systems/InputSystem'
 import { BulletPool } from './BulletPool'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
+import { STAGE_W } from '../config'
 
-const SPEED = 300
+// Wide (landscape) battlefields need proportionally faster strafing or
+// crossing the field feels sluggish; portrait keeps the classic 300.
+const SPEED = 300 * Math.max(1, STAGE_W / 640)
 const FOCUS_SPEED_MULT = 0.4
 const BANK_ANGLE = 0.22        // max hull tilt (radians) when strafing
 const RESPAWN_DELAY = 1.1      // seconds off-screen after death

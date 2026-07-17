@@ -26,10 +26,12 @@ export default function App() {
     return () => { game.destroy(); gameRef.current = null }
   }, [])
 
-  // Fit the game to the viewport (mobile support)
+  // Fill the viewport: scale up or down to the container (VIVERSE iframe,
+  // desktop window, phone) — a portrait shmup fills the height on wide
+  // screens and the width on tall ones.
   useEffect(() => {
     const onResize = () => {
-      const s = Math.min(window.innerWidth / GAME_W, window.innerHeight / GAME_H, 1)
+      const s = Math.min(window.innerWidth / GAME_W, window.innerHeight / GAME_H)
       setScale(s)
       gameRef.current?.setCanvasScale(s)
     }
@@ -51,12 +53,18 @@ export default function App() {
   return (
     <div style={{
       position: 'absolute', width: GAME_W, height: GAME_H,
-      left: '50%', top: 0, marginLeft: -(GAME_W / 2),
+      left: '50%', top: '50%',
+      marginLeft: -(GAME_W / 2), marginTop: -(GAME_H / 2),
       transform: `scale(${scale})`,
-      transformOrigin: 'top center',
+      transformOrigin: 'center center',
       touchAction: 'none',
     }}>
-      <canvas ref={canvasRef} width={GAME_W} height={GAME_H} style={{ display: 'block', touchAction: 'none' }} />
+      <canvas
+        ref={canvasRef}
+        width={GAME_W}
+        height={GAME_H}
+        style={{ display: 'block', touchAction: 'none', imageRendering: 'pixelated' }}
+      />
       <HUD />
       {phase === 'title'      && <TitleScreen />}
       {phase === 'gameover'   && <GameOverScreen />}

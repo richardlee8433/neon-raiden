@@ -9,9 +9,8 @@ import { screenShake } from '../fx/ScreenShake'
 import { hitstop } from '../fx/Hitstop'
 import { audioSystem } from '../systems/AudioSystem'
 
-import { STAGE_H } from '../config'
+import { STAGE_W, STAGE_H } from '../config'
 
-const STAGE_W = 480
 const TARGET_Y = 120
 
 export class Boss {
