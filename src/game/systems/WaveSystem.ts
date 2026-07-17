@@ -1,8 +1,9 @@
 import { Container, Texture } from 'pixi.js'
 import { StageConfig, WaveEntry } from '../data/stages'
-import { ENEMIES } from '../data/enemies'
+import { ENEMIES, EnemyDef } from '../data/enemies'
 import { Enemy } from '../entities/Enemy'
 import { BulletPool } from '../entities/BulletPool'
+import { gameStore } from '../../store/gameStore'
 
 const POOL_SIZE = 96
 // Global spawn-density multiplier: every wave fields 50% more enemies,
@@ -52,10 +53,22 @@ export class WaveSystem {
   }
 
   private spawnWave(entry: WaveEntry, playerX: number) {
-    const def = ENEMIES[entry.type]
+    let def: EnemyDef | undefined = ENEMIES[entry.type]
     if (!def) return
     const tex = this.textures.get(entry.type)
     if (!tex) return
+
+    // Loop rank: every playthrough past the first fields faster enemies
+    // with quicker, faster bullets (capped so loop 5+ stays humanly possible)
+    const rank = Math.min(gameStore.getState().loop - 1, 4)
+    if (rank > 0) {
+      def = {
+        ...def,
+        speed: def.speed * (1 + 0.12 * rank),
+        bulletSpeed: def.bulletSpeed * (1 + 0.15 * rank),
+        fireRate: def.fireRate / (1 + 0.1 * rank),
+      }
+    }
 
     const count = Math.round(entry.count * DENSITY_MULT)
     const positions = formation(entry.formation, count, 480)

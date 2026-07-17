@@ -1,9 +1,17 @@
 import { create } from 'zustand'
+import { STAGES } from '../game/data/stages'
+
+/** Chain length → score multiplier tier. */
+export function chainMult(chain: number): number {
+  return chain >= 20 ? 8 : chain >= 10 ? 4 : chain >= 5 ? 2 : 1
+}
 
 interface GameState {
   score: number
   hiScore: number
   graze: number
+  chain: number
+  loop: number   // playthrough number; enemies get faster each loop
   lives: number
   bombs: number
   power: number
@@ -18,6 +26,8 @@ interface GameState {
   paused: boolean
 
   addScore: (n: number) => void
+  addKillScore: (base: number) => { awarded: number; mult: number }
+  resetChain: () => void
   addGraze: () => void
   loseLife: () => void
   addLife: () => void
@@ -36,7 +46,8 @@ interface GameState {
 }
 
 const freshPlay = {
-  score: 0, graze: 0, lives: 3, bombs: 3, power: 0, laserPower: 0,
+  score: 0, graze: 0, chain: 0, loop: 1,
+  lives: 3, bombs: 3, power: 0, laserPower: 0,
   stage: 1, phase: 'playing' as const,
   bossHp: 0, bossMaxHp: 1, bossActive: false, bossWarning: false,
   paused: false,
@@ -86,6 +97,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (hiScore !== s.hiScore) saveHiScore(hiScore)   // persist each new record
     return { score, hiScore }
   }),
+  // Kill scoring: consecutive kills build a chain; its multiplier tier
+  // scales every kill's score until the chain lapses (GameApp owns the timer).
+  addKillScore: (base) => {
+    let out = { awarded: 0, mult: 1 }
+    set((s) => {
+      const chain = s.chain + 1
+      const mult = chainMult(chain)
+      const awarded = base * mult
+      out = { awarded, mult }
+      const score = s.score + awarded
+      const hiScore = Math.max(score, s.hiScore)
+      if (hiScore !== s.hiScore) saveHiScore(hiScore)
+      return { chain, score, hiScore }
+    })
+    return out
+  },
+  resetChain: () => set((s) => (s.chain === 0 ? {} : { chain: 0 })),
   addGraze: () => set((s) => {
     const score = s.score + 50
     const hiScore = Math.max(score, s.hiScore)
@@ -111,11 +139,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   setBossHp: (hp, max) => set({ bossHp: hp, bossMaxHp: max }),
   setBossActive: (v) => set({ bossActive: v }),
   setBossWarning: (v) => set({ bossWarning: v }),
-  advanceStage: () => set((s) => ({
-    stage: s.stage + 1,
-    phase: 'advancing',
-    bossActive: false,
-  })),
+  advanceStage: () => set((s) => {
+    // past the last stage: wrap into the next loop (harder playthrough)
+    const wrap = s.stage >= STAGES.length
+    return {
+      stage: wrap ? 1 : s.stage + 1,
+      loop: wrap ? s.loop + 1 : s.loop,
+      phase: 'advancing',
+      bossActive: false,
+    }
+  }),
   toggleSound: () => set((s) => {
     const soundEnabled = !s.soundEnabled
     saveSoundPref(soundEnabled)

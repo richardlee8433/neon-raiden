@@ -20,6 +20,7 @@ import { makeGlowBulletTexture, makeGemTexture } from '../fx/GlowTexture'
 import { GemPool } from '../entities/Gem'
 import { musicSystem } from '../systems/MusicSystem'
 import { EngineExhaust } from '../fx/EngineExhaust'
+import { FloatingTextPool, multColor } from '../fx/FloatingText'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
@@ -46,6 +47,7 @@ export class GameApp {
   private laser!: LaserBeam
   private exhaust!: EngineExhaust
   private shockwave!: Shockwave
+  private floats!: FloatingTextPool
 
   private bgLayer!: Container
   private gameLayer!: Container
@@ -55,6 +57,8 @@ export class GameApp {
   private bombCooldown = false
   private transitioning = false
   private bossCountdown = -1   // >=0: WARNING banner is up, boss enters at 0
+  private chainTimer = 0       // kill-chain lapse countdown
+  private lastChain = 0
 
   constructor(private canvas: HTMLCanvasElement) {
     this.app = new Application()
@@ -107,6 +111,7 @@ export class GameApp {
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)
     this.shockwave  = new Shockwave(this.fxLayer)
+    this.floats     = new FloatingTextPool(this.fxLayer)
     this.exhaust    = new EngineExhaust(
       this.bulletLayer, makeGlowBulletTexture(this.app.renderer, 0x44aaff, 3.5))
 
@@ -151,25 +156,24 @@ export class GameApp {
     this.bossBullets.releaseAll()
     this.pickups.releaseAll()
     this.gems.releaseAll()
+    this.floats.releaseAll()
     this.player.reset()
+    gameStore.getState().resetChain()
+    this.chainTimer = 0
+    this.lastChain = 0
     this.transitioning = false
     this.bossCountdown = -1
     gameStore.getState().setBossWarning(false)
   }
 
-  private handleStageClear(stageNum: number) {
+  private handleStageClear(_stageNum: number) {
     if (this.transitioning) return
     this.transitioning = true
 
-    if (stageNum >= STAGES.length) {
-      // All stages done — go back to title after a pause
-      setTimeout(() => gameStore.getState().setPhase('title'), 3500)
-      return
-    }
-
-    // Advance to next stage
+    // Advance to the next stage — advanceStage wraps past the last stage
+    // into the next loop, where enemies come back faster and meaner.
     setTimeout(() => {
-      gameStore.getState().advanceStage()   // phase → 'advancing', stage++
+      gameStore.getState().advanceStage()   // phase → 'advancing'
     }, 2000)
 
     setTimeout(() => {
@@ -191,6 +195,15 @@ export class GameApp {
     this.input.update()
     this.player.update(dt, this.input.actions)
     if (this.player.consumeJustDied()) this.onPlayerDeath()
+
+    // Kill-chain lapse: each kill rearms the window; silence breaks the chain
+    const chain = gameStore.getState().chain
+    if (chain > this.lastChain) this.chainTimer = 2.0
+    else if (chain > 0) {
+      this.chainTimer -= dt
+      if (this.chainTimer <= 0) gameStore.getState().resetChain()
+    }
+    this.lastChain = gameStore.getState().chain
     this.exhaust.update(dt, this.player.x, this.player.y, !this.player.isDead)
     this.bulletTrail.update(this.playerBullets)
     this.playerBullets.update(dt, W, H)
@@ -210,9 +223,17 @@ export class GameApp {
       this.bossCountdown -= dt
       if (this.bossCountdown < 0 && !this.boss.active) {
         gameStore.getState().setBossWarning(false)
-        const stage = gameStore.getState().stage
+        const { stage, loop } = gameStore.getState()
         const cfg = STAGES[stage - 1] ?? STAGES[0]
-        this.boss.spawn(cfg.boss, stage)
+        // Loop rank: later playthroughs field tougher, faster bosses
+        const rank = Math.min(loop - 1, 4)
+        const boss = rank === 0 ? cfg.boss : {
+          ...cfg.boss,
+          maxHp: Math.round(cfg.boss.maxHp * (1 + 0.25 * rank)),
+          bulletSpeedMult: cfg.boss.bulletSpeedMult * (1 + 0.12 * rank),
+          fireRateMult: cfg.boss.fireRateMult / (1 + 0.08 * rank),
+        }
+        this.boss.spawn(boss, stage)
       }
     }
 
@@ -225,6 +246,7 @@ export class GameApp {
       this.boss.active ? this.boss : null,
       this.explosions,
       this.gems,
+      this.floats,
     )
 
     // Enemy laser hits on player (registers a hit; death resolves below)
@@ -249,12 +271,13 @@ export class GameApp {
       this.playerBullets, this.enemyBullets, this.bossBullets,
       this.waves.activeEnemies,
       this.boss.active ? this.boss : null,
-      this.player, this.explosions, this.pickups, this.gems,
+      this.player, this.explosions, this.pickups, this.gems, this.floats,
     )
 
     this.explosions.update(dt)
     this.bombEffect.update(dt)
     this.shockwave.update(dt)
+    this.floats.update(dt)
 
     if (this.input.actions.bomb && !this.bombCooldown) {
       if (this.player.inGrace) {
@@ -275,6 +298,7 @@ export class GameApp {
     hitstop.trigger(0.15)
     audioSystem.playPlayerHit()
     const s = gameStore.getState()
+    s.resetChain()   // death breaks the kill chain
     s.dropPower()
     this.pickups.spawn(this.player.x - 30, this.player.y - 60, 'power')
     this.pickups.spawn(this.player.x + 30, this.player.y - 60, 'power')
@@ -299,7 +323,8 @@ export class GameApp {
       e.hp -= 3
       if (e.hp <= 0) {
         this.explosions.spawn(e.sprite.x, e.sprite.y, 2)
-        gameStore.getState().addScore(e.scoreValue)
+        const { awarded, mult } = gameStore.getState().addKillScore(e.scoreValue)
+        this.floats.spawn(e.sprite.x, e.sprite.y - 10, `+${awarded}`, multColor(mult))
         this.gems.spawn(e.sprite.x, e.sprite.y, 1)
         e.deactivate()
       }

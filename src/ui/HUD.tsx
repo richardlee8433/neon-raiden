@@ -1,4 +1,4 @@
-import { useGameStore } from '../store/gameStore'
+import { useGameStore, chainMult } from '../store/gameStore'
 
 const IS_TOUCH = typeof window !== 'undefined' &&
   ('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -11,9 +11,12 @@ function triggerBomb() {
 }
 
 export function HUD() {
-  const { score, hiScore, graze, lives, bombs, power, laserPower,
+  const { score, hiScore, graze, chain, loop, lives, bombs, power, laserPower,
           bossActive, bossHp, bossMaxHp, bossWarning,
           soundEnabled, toggleSound } = useGameStore()
+  const mult = chainMult(chain)
+  const chainColor = mult >= 8 ? '#ff44aa' : mult >= 4 ? '#ff9933'
+                   : mult >= 2 ? '#ffee44' : '#cccccc'
 
   return (
     <>
@@ -92,8 +95,22 @@ export function HUD() {
         pointerEvents: 'none', userSelect: 'none',
         textShadow: '0 0 4px #000',
       }}>
-        GRAZE {graze}
+        GRAZE {graze}{loop > 1 ? `  ·  LOOP ${loop}` : ''}
       </div>
+
+      {/* Kill chain */}
+      {chain >= 2 && (
+        <div style={{
+          position: 'absolute', top: 44, left: 10,
+          color: chainColor, fontFamily: 'monospace',
+          fontSize: mult > 1 ? 14 : 11, fontWeight: 'bold',
+          pointerEvents: 'none', userSelect: 'none',
+          textShadow: `0 0 6px ${chainColor}`,
+          transition: 'font-size 0.15s',
+        }}>
+          ×{mult} CHAIN {chain}
+        </div>
+      )}
 
       {/* Touch bomb button */}
       {IS_TOUCH && (

@@ -3,6 +3,7 @@ import { Enemy } from '../entities/Enemy'
 import { Boss } from '../entities/Boss'
 import { GemPool } from '../entities/Gem'
 import { ExplosionPool } from './Explosion'
+import { FloatingTextPool, multColor } from './FloatingText'
 import { screenShake } from './ScreenShake'
 import { gameStore } from '../../store/gameStore'
 
@@ -29,6 +30,7 @@ export class LaserBeam {
     boss: Boss | null,
     explosions: ExplosionPool,
     gems: GemPool,
+    floats: FloatingTextPool,
   ) {
     this.g.clear()
 
@@ -70,7 +72,8 @@ export class LaserBeam {
       e.hp -= dmg
       if (e.hp <= 0) {
         explosions.spawn(e.sprite.x, e.sprite.y, 2)
-        gameStore.getState().addScore(e.scoreValue)
+        const { awarded, mult } = gameStore.getState().addKillScore(e.scoreValue)
+        floats.spawn(e.sprite.x, e.sprite.y - 10, `+${awarded}`, multColor(mult))
         gems.spawn(e.sprite.x, e.sprite.y, 1)
         screenShake.trigger(1.5)
         e.deactivate()

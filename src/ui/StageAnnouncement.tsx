@@ -2,6 +2,7 @@ import { useGameStore } from '../store/gameStore'
 
 export function StageAnnouncement() {
   const stage = useGameStore((s) => s.stage)
+  const loop = useGameStore((s) => s.loop)
 
   return (
     <div style={{
@@ -25,6 +26,14 @@ export function StageAnnouncement() {
       <div style={{ marginTop: 16, fontSize: 11, color: '#555', letterSpacing: 3 }}>
         {stage === 2 ? 'NEBULA FIELD' : stage === 3 ? 'ASTEROID BELT' : 'DEEP SPACE'}
       </div>
+      {loop > 1 && (
+        <div style={{
+          marginTop: 22, fontSize: 13, letterSpacing: 4,
+          color: '#ff6644', textShadow: '0 0 10px #ff2200',
+        }}>
+          LOOP {loop} — ENEMY FORCES INTENSIFIED
+        </div>
+      )}
     </div>
   )
 }

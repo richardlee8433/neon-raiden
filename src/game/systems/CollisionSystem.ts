@@ -6,6 +6,7 @@ import { Boss } from '../entities/Boss'
 import { PickupPool } from '../entities/Pickup'
 import { GemPool } from '../entities/Gem'
 import { ExplosionPool } from '../fx/Explosion'
+import { FloatingTextPool, multColor } from '../fx/FloatingText'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from './AudioSystem'
 import { screenShake } from '../fx/ScreenShake'
@@ -38,6 +39,7 @@ export class CollisionSystem {
     explosions: ExplosionPool,
     pickups: PickupPool,
     gems: GemPool,
+    floats: FloatingTextPool,
   ) {
     // ── Player bullets vs enemies ──────────────────────────────────────────
     for (const bullet of playerBullets.active) {
@@ -53,7 +55,8 @@ export class CollisionSystem {
           screenShake.trigger(1.5)
           hitstop.trigger(0.025)
           audioSystem.playExplosion('small')
-          gameStore.getState().addScore(enemy.scoreValue)
+          const { awarded, mult } = gameStore.getState().addKillScore(enemy.scoreValue)
+          floats.spawn(enemy.sprite.x, enemy.sprite.y - 10, `+${awarded}`, multColor(mult))
           const roll = Math.random()
           if (roll < ENEMY_LIFE_CHANCE)             pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'life')
           else if (roll < ENEMY_BOMB_CHANCE)        pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'bomb')
