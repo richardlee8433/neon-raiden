@@ -28,7 +28,7 @@ function loadTexture(src: string): Promise<Texture> {
 
 export async function loadAssets(): Promise<GameAssets> {
   const paths = [
-    './assets/kenney/Ships/ship_0000.png',   // player
+    './assets/ships/player-hero.png',        // player (hi-res, alpha-keyed)
     './assets/kenney/Tiles/tile_0000.png',   // player bullet
     './assets/kenney/Tiles/tile_0008.png',   // enemy bullet
     './assets/kenney/Tiles/tile_0010.png',   // boss bullet (larger)

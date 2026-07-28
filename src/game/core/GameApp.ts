@@ -218,6 +218,9 @@ export class GameApp {
       audioSystem.playSiren()
       this.waves.dismissAll()
       this.enemyBullets.releaseAll()
+      // Warm the browser cache during the siren — boss art runs to a few
+      // hundred KB, and spawn() fetches it at the instant it must appear.
+      new Image().src = (STAGES[gameStore.getState().stage - 1] ?? STAGES[0]).boss.shipSprite
     }
     if (this.bossCountdown >= 0) {
       this.bossCountdown -= dt

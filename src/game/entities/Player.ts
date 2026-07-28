@@ -21,6 +21,9 @@ const DEATHBOMB_IFRAMES = 1.5
 // so wings can brush through bullet curtains. Scales with the sprites so
 // the hitbox stays the same fraction of the ship on every layout.
 const HITBOX_SIZE = 6 * SPRITE_SCALE
+// On-screen hull height in stage px. The texture's own resolution is divided
+// out at construction, so swapping the art keeps this exact footprint.
+const SHIP_DISPLAY_H = 72
 const BULLET_SPEED = 620
 
 // Each entry is an array of [vx_norm, vy_norm] direction vectors per power level.
@@ -66,7 +69,7 @@ export class Player {
     this.sprite.anchor.set(0.5)
     this.sprite.x = stageW / 2
     this.sprite.y = stageH * 0.8
-    this.sprite.scale.set(2 * SPRITE_SCALE)
+    this.sprite.scale.set(SHIP_DISPLAY_H * SPRITE_SCALE / texture.height)
     container.addChild(this.sprite)
 
     const half = HITBOX_SIZE / 2

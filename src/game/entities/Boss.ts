@@ -12,6 +12,8 @@ import { audioSystem } from '../systems/AudioSystem'
 import { STAGE_W, STAGE_H, SPRITE_SCALE } from '../config'
 
 const TARGET_Y = 120
+const TOP_MARGIN = 20
+const ENTER_DURATION = 2.5
 
 export class Boss {
   sprite: Sprite
@@ -32,6 +34,8 @@ export class Boss {
   private dyingTimer = 0
   private chainTimer = 0
   private finaleDone = false
+  private targetY = TARGET_Y
+  private enterSpeed = 80
   private cfg!: BossConfig
 
   constructor(private container: Container) {
@@ -65,9 +69,15 @@ export class Boss {
     this.dyingTimer = 0
     this.chainTimer = 0
     this.finaleDone = false
-    this.sprite.scale.set(3 * SPRITE_SCALE, -3 * SPRITE_SCALE)
+    const k = (cfg.displayW * SPRITE_SCALE) / tex.width
+    this.sprite.scale.set(k, cfg.flipY ? -k : k)
+    // Tall hulls would hang off the top edge at the default hover height.
+    this.targetY = Math.max(TARGET_Y, (tex.height * k) / 2 + TOP_MARGIN)
     this.sprite.x = STAGE_W / 2
-    this.sprite.y = -80
+    this.sprite.y = -(tex.height * k) / 2 - TOP_MARGIN
+    // Fixed-duration entrance: a taller hull starts further off-screen, so a
+    // fixed speed would leave the big bosses crawling in.
+    this.enterSpeed = (this.targetY - this.sprite.y) / ENTER_DURATION
     this.sprite.alpha = 1
     this.sprite.tint = 0xffffff
     this.sprite.visible = true
@@ -118,9 +128,9 @@ export class Boss {
     }
 
     if (this.state === 'entering') {
-      this.sprite.y += 80 * dt
-      if (this.sprite.y >= TARGET_Y) {
-        this.sprite.y = TARGET_Y
+      this.sprite.y += this.enterSpeed * dt
+      if (this.sprite.y >= this.targetY) {
+        this.sprite.y = this.targetY
         this.state = 'fighting'
       }
       return
@@ -162,8 +172,11 @@ export class Boss {
     const baseSpeed = [0, 60, 100, 140][this.phase]
     const speed = baseSpeed * this.cfg.speedMult
     this.sprite.x += this.sweepDir * speed * dt
-    if (this.sprite.x > STAGE_W - 60 || this.sprite.x < 60) this.sweepDir *= -1
-    if (this.phase === 3) this.sprite.y = TARGET_Y + Math.sin(this.age * 1.5) * 30
+    // Turn on the hull's own edge, not a fixed margin — a wide hull would
+    // otherwise sweep a third of itself off the side of the field.
+    const halfW = Math.min(this.sprite.width / 2, STAGE_W / 2 - 20)
+    if (this.sprite.x > STAGE_W - halfW || this.sprite.x < halfW) this.sweepDir *= -1
+    if (this.phase === 3) this.sprite.y = this.targetY + Math.sin(this.age * 1.5) * 30
 
     // Fire — per-boss cadence per phase
     const RATES: Record<number, number[]> = {

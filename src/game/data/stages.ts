@@ -12,6 +12,10 @@ export interface WaveEntry {
 
 export interface BossConfig {
   shipSprite: string   // path to ship png
+  displayW: number     // on-screen width in stage px (before SPRITE_SCALE);
+                       // the texture's own resolution is divided out, so art
+                       // of any size keeps the footprint stated here
+  flipY: boolean       // true for art drawn nose-up (Kenney ships face away)
   maxHp: number
   speedMult: number    // multiplier on sweep speed
   bulletSpeedMult: number
@@ -49,7 +53,8 @@ const stage1: StageConfig = {
     { time: 35, type: 'fighter', count: 6, formation: 'line-top',   path: 'zigzag'   },
   ],
   boss: {
-    shipSprite: './assets/kenney/Ships/ship_0015.png',
+    shipSprite: './assets/ships/boss1-dreadnought.png',
+    displayW: 300, flipY: false,
     maxHp: 60, speedMult: 1, bulletSpeedMult: 1, fireRateMult: 1, scoreValue: 5000,
   },
 }
@@ -78,7 +83,8 @@ const stage2: StageConfig = {
     { time: 41, type: 'gunship',     count: 3, formation: 'line-top',    path: 'straight'       },
   ],
   boss: {
-    shipSprite: './assets/kenney/Ships/ship_0017.png',
+    shipSprite: './assets/ships/boss2-cruiser.png',
+    displayW: 235, flipY: true,
     maxHp: 80, speedMult: 1.3, bulletSpeedMult: 1.25, fireRateMult: 0.8, scoreValue: 8000,
   },
 }
@@ -108,7 +114,8 @@ const stage3: StageConfig = {
     { time: 40, type: 'carrier',      count: 3, formation: 'v-shape',    path: 'straight'       },
   ],
   boss: {
-    shipSprite: './assets/kenney/Ships/ship_0019.png',
+    shipSprite: './assets/ships/boss3-fortress.png',
+    displayW: 310, flipY: true,
     maxHp: 100, speedMult: 1.6, bulletSpeedMult: 1.5, fireRateMult: 0.65, scoreValue: 12000,
   },
 }
