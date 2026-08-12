@@ -1,13 +1,44 @@
 import { useGameStore, chainMult } from '../store/gameStore'
+import { STAGE_W, PLAYFIELD_W, PLAYFIELD_LEFT, PLAYFIELD_RIGHT } from '../game/config'
 
 const IS_TOUCH = typeof window !== 'undefined' &&
   ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+
+// Landscape runs a central combat corridor with decorative side wings, so the
+// HUD moves out into those wings instead of sitting over the playfield.
+const IS_WIDE = PLAYFIELD_W < STAGE_W
+const WING_W = PLAYFIELD_LEFT
 
 function triggerBomb() {
   window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyX', bubbles: true }))
   setTimeout(() => {
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyX', bubbles: true }))
   }, 120)
+}
+
+function MeterBar({ label, ratio, color, glow }: {
+  label: string
+  ratio: number
+  color: string
+  glow?: boolean
+}) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      {label}
+      <span style={{
+        display: 'inline-block', width: 40, height: 6,
+        background: '#333', borderRadius: 3, overflow: 'hidden',
+      }}>
+        <span style={{
+          display: 'block', height: '100%',
+          width: `${ratio * 100}%`,
+          background: color,
+          transition: 'width 0.2s',
+          boxShadow: glow ? `0 0 4px ${color}` : 'none',
+        }} />
+      </span>
+    </span>
+  )
 }
 
 export function HUD() {
@@ -18,98 +49,119 @@ export function HUD() {
   const chainColor = mult >= 8 ? '#ff44aa' : mult >= 4 ? '#ff9933'
                    : mult >= 2 ? '#ffee44' : '#cccccc'
 
+  const mono = {
+    color: '#fff', fontFamily: 'monospace', fontSize: 13,
+    pointerEvents: 'none' as const, userSelect: 'none' as const,
+    textShadow: '0 0 4px #000',
+  }
+
+  const soundButton = (
+    <button
+      // Blur after click so a focused button doesn't get re-triggered
+      // by the spacebar (which is the fire key).
+      onClick={(e) => { toggleSound(); e.currentTarget.blur() }}
+      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') e.preventDefault() }}
+      title="Toggle sound (M)"
+      style={{
+        pointerEvents: 'all',
+        background: 'rgba(0,0,0,0.5)',
+        border: '1px solid #444',
+        borderRadius: 4,
+        color: '#fff',
+        cursor: 'pointer',
+        fontFamily: 'monospace',
+        fontSize: 13,
+        lineHeight: 1,
+        padding: '2px 6px',
+        userSelect: 'none',
+      }}
+    >
+      {soundEnabled ? '🔊' : '🔇'}
+    </button>
+  )
+
+  const grazeLine = (
+    <div style={{ ...mono, color: '#cc88ff', fontSize: 11 }}>
+      GRAZE {graze}{loop > 1 ? `  ·  LOOP ${loop}` : ''}
+    </div>
+  )
+
+  const chainLine = chain >= 2 && (
+    <div style={{
+      ...mono,
+      color: chainColor,
+      fontSize: mult > 1 ? 14 : 11,
+      fontWeight: 'bold',
+      textShadow: `0 0 6px ${chainColor}`,
+      transition: 'font-size 0.15s',
+    }}>
+      ×{mult} CHAIN {chain}
+    </div>
+  )
+
   return (
     <>
-      {/* Top bar */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, width: '100%',
-        padding: '5px 10px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        color: '#fff', fontFamily: 'monospace', fontSize: 13,
-        pointerEvents: 'none', userSelect: 'none',
-        textShadow: '0 0 4px #000',
-      }}>
-        <span>SCORE {String(score).padStart(6, '0')}</span>
-        <span>HI {String(hiScore).padStart(6, '0')}</span>
-        <span>{'♥'.repeat(Math.max(0, lives))}{'  '}{'💣'.repeat(Math.max(0, bombs))}</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            BLT
-            <span style={{
-              display: 'inline-block', width: 40, height: 6,
-              background: '#333', borderRadius: 3, overflow: 'hidden',
-            }}>
-              <span style={{
-                display: 'block', height: '100%',
-                width: `${(power / 4) * 100}%`,
-                background: '#ffee00', transition: 'width 0.2s',
-              }} />
+      {IS_WIDE ? (
+        <>
+          {/* Left wing: score & scoring state */}
+          <div style={{
+            position: 'absolute', top: 14, left: 0, width: WING_W,
+            padding: '0 14px', boxSizing: 'border-box',
+            display: 'flex', flexDirection: 'column', gap: 7,
+            alignItems: 'flex-start', ...mono,
+          }}>
+            <span>SCORE {String(score).padStart(6, '0')}</span>
+            <span style={{ color: '#aab' }}>HI {String(hiScore).padStart(6, '0')}</span>
+            {grazeLine}
+            {chainLine}
+          </div>
+
+          {/* Right wing: resources & weapon meters */}
+          <div style={{
+            position: 'absolute', top: 14, left: PLAYFIELD_RIGHT, width: WING_W,
+            padding: '0 14px', boxSizing: 'border-box',
+            display: 'flex', flexDirection: 'column', gap: 7,
+            alignItems: 'flex-end', ...mono,
+          }}>
+            <span>{'♥'.repeat(Math.max(0, lives))}</span>
+            <span>{'💣'.repeat(Math.max(0, bombs))}</span>
+            <MeterBar label="BLT" ratio={power / 4} color="#ffee00" />
+            <MeterBar
+              label="LZR"
+              ratio={laserPower / 5}
+              color={laserPower > 0 ? '#44ddff' : '#333'}
+              glow={laserPower > 0}
+            />
+            <span style={{ pointerEvents: 'all', marginTop: 4 }}>{soundButton}</span>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Portrait: single top bar across the full width */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, width: '100%',
+            padding: '5px 10px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            ...mono,
+          }}>
+            <span>SCORE {String(score).padStart(6, '0')}</span>
+            <span>HI {String(hiScore).padStart(6, '0')}</span>
+            <span>{'♥'.repeat(Math.max(0, lives))}{'  '}{'💣'.repeat(Math.max(0, bombs))}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <MeterBar label="BLT" ratio={power / 4} color="#ffee00" />
+              <MeterBar
+                label="LZR"
+                ratio={laserPower / 5}
+                color={laserPower > 0 ? '#44ddff' : '#333'}
+                glow={laserPower > 0}
+              />
             </span>
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            LZR
-            <span style={{
-              display: 'inline-block', width: 40, height: 6,
-              background: '#333', borderRadius: 3, overflow: 'hidden',
-            }}>
-              <span style={{
-                display: 'block', height: '100%',
-                width: `${(laserPower / 5) * 100}%`,
-                background: laserPower > 0 ? '#44ddff' : '#333',
-                transition: 'width 0.2s',
-                boxShadow: laserPower > 0 ? '0 0 4px #44ddff' : 'none',
-              }} />
-            </span>
-          </span>
-        </span>
+            {soundButton}
+          </div>
 
-        {/* Sound toggle — needs pointer-events re-enabled */}
-        <button
-          // Blur after click so a focused button doesn't get re-triggered
-          // by the spacebar (which is the fire key).
-          onClick={(e) => { toggleSound(); e.currentTarget.blur() }}
-          onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') e.preventDefault() }}
-          title="Toggle sound (M)"
-          style={{
-            pointerEvents: 'all',
-            background: 'rgba(0,0,0,0.5)',
-            border: '1px solid #444',
-            borderRadius: 4,
-            color: '#fff',
-            cursor: 'pointer',
-            fontFamily: 'monospace',
-            fontSize: 13,
-            lineHeight: 1,
-            padding: '2px 6px',
-            userSelect: 'none',
-          }}
-        >
-          {soundEnabled ? '🔊' : '🔇'}
-        </button>
-      </div>
-
-      {/* Graze counter */}
-      <div style={{
-        position: 'absolute', top: 28, left: 10,
-        color: '#cc88ff', fontFamily: 'monospace', fontSize: 11,
-        pointerEvents: 'none', userSelect: 'none',
-        textShadow: '0 0 4px #000',
-      }}>
-        GRAZE {graze}{loop > 1 ? `  ·  LOOP ${loop}` : ''}
-      </div>
-
-      {/* Kill chain */}
-      {chain >= 2 && (
-        <div style={{
-          position: 'absolute', top: 44, left: 10,
-          color: chainColor, fontFamily: 'monospace',
-          fontSize: mult > 1 ? 14 : 11, fontWeight: 'bold',
-          pointerEvents: 'none', userSelect: 'none',
-          textShadow: `0 0 6px ${chainColor}`,
-          transition: 'font-size 0.15s',
-        }}>
-          ×{mult} CHAIN {chain}
-        </div>
+          <div style={{ position: 'absolute', top: 28, left: 10 }}>{grazeLine}</div>
+          <div style={{ position: 'absolute', top: 44, left: 10 }}>{chainLine}</div>
+        </>
       )}
 
       {/* Touch bomb button */}
@@ -131,10 +183,11 @@ export function HUD() {
         </button>
       )}
 
-      {/* Boss warning banner */}
+      {/* Boss warning banner — centered on the corridor, not the whole stage */}
       {bossWarning && (
         <div style={{
-          position: 'absolute', top: '38%', left: 0, width: '100%',
+          position: 'absolute', top: '38%',
+          left: PLAYFIELD_LEFT, width: PLAYFIELD_W,
           textAlign: 'center', pointerEvents: 'none', userSelect: 'none',
           fontFamily: 'monospace',
         }}>
@@ -164,10 +217,11 @@ export function HUD() {
         </div>
       )}
 
-      {/* Boss HP bar */}
+      {/* Boss HP bar — centered on the corridor */}
       {bossActive && (
         <div style={{
-          position: 'absolute', bottom: 16, left: '50%',
+          position: 'absolute', bottom: 16,
+          left: PLAYFIELD_LEFT + PLAYFIELD_W / 2,
           transform: 'translateX(-50%)',
           width: 240,
           pointerEvents: 'none', userSelect: 'none',

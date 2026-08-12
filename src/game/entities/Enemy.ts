@@ -3,7 +3,7 @@ import { EnemyDef } from '../data/enemies'
 import { BulletPool } from './BulletPool'
 import { EnemyPath } from '../data/stages'
 import { fireRing, fireAimedFan } from '../systems/BulletPatterns'
-import { STAGE_W, SPRITE_SCALE } from '../config'
+import { PLAYFIELD_LEFT, PLAYFIELD_RIGHT, SPRITE_SCALE } from '../config'
 
 export type { EnemyPath }
 
@@ -162,7 +162,7 @@ export class Enemy {
     // linger on screen indefinitely even if a movement pattern stalls.
     if (
       this.sprite.y > stageH + 60 || this.sprite.y < -200 ||
-      this.sprite.x < -120 || this.sprite.x > STAGE_W + 120 ||
+      this.sprite.x < PLAYFIELD_LEFT - 120 || this.sprite.x > PLAYFIELD_RIGHT + 120 ||
       this.age > 30
     ) { this.deactivate(); return }
 

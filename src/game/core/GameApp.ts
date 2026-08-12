@@ -1,4 +1,4 @@
-import { Application, Container } from 'pixi.js'
+import { Application, Container, Graphics } from 'pixi.js'
 import { AdvancedBloomFilter } from 'pixi-filters'
 import { loadAssets } from '../../assets/AssetLoader'
 import { InputSystem } from '../systems/InputSystem'
@@ -25,7 +25,10 @@ import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
 
-import { STAGE_W as W, STAGE_H as H, SPRITE_SCALE } from '../config'
+import {
+  STAGE_W as W, STAGE_H as H, SPRITE_SCALE,
+  PLAYFIELD_W, PLAYFIELD_LEFT, PLAYFIELD_RIGHT,
+} from '../config'
 
 export class GameApp {
   private app: Application
@@ -83,13 +86,39 @@ export class GameApp {
     this.bulletLayer = new Container()
     this.fxLayer     = new Container()
 
-    // Bullets + fx share one bloom pass so every glow texture actually glows.
-    const glowWrap = new Container()
-    glowWrap.addChild(this.bulletLayer, this.fxLayer)
-    glowWrap.filters = [new AdvancedBloomFilter({
+    // Bullets and fx each get their own bloom pass rather than sharing one:
+    // the bullet pass is clipped to the combat corridor, while the fx pass
+    // must stay full-screen (bomb flash, shockwave sweep across everything).
+    const bloom = () => new AdvancedBloomFilter({
       threshold: 0.25, bloomScale: 1.1, brightness: 1, blur: 5, quality: 4,
-    })]
-    this.app.stage.addChild(this.bgLayer, this.gameLayer, glowWrap)
+    })
+    const bulletWrap = new Container()
+    bulletWrap.addChild(this.bulletLayer)
+    bulletWrap.filters = [bloom()]
+    const fxWrap = new Container()
+    fxWrap.addChild(this.fxLayer)
+    fxWrap.filters = [bloom()]
+
+    const edgeLayer = new Container()
+    this.app.stage.addChild(
+      this.bgLayer, edgeLayer, this.gameLayer, bulletWrap, fxWrap,
+    )
+
+    // Landscape only: gameplay lives in a central corridor, with the nebula
+    // continuing into decorative side wings. Clip gameplay to the corridor so
+    // ships flying in never appear out in the wings, and dim the wings so the
+    // corridor reads as deliberate framing. Portrait needs neither (the
+    // corridor is the whole stage), so it pays no cost at all.
+    if (PLAYFIELD_W < W) {
+      // One mask instance per container — Pixi tracks a mask's owner, so the
+      // same Graphics cannot clip two containers.
+      for (const target of [this.gameLayer, bulletWrap]) {
+        const m = new Graphics().rect(PLAYFIELD_LEFT, 0, PLAYFIELD_W, H).fill(0xffffff)
+        this.app.stage.addChild(m)
+        target.mask = m
+      }
+      this.buildCorridorEdges(edgeLayer)
+    }
 
     this.scroll = new ScrollSystem(this.bgLayer, W, H, 'space')
 
@@ -145,6 +174,25 @@ export class GameApp {
       const dt = Math.min(deltaMS / 1000, 0.05)
       this.tick(dt)
     })
+  }
+
+  /**
+   * Side wings: a stepped shade that deepens away from the corridor (a cheap
+   * gradient without a texture) plus a faint rule on each corridor edge.
+   */
+  private buildCorridorEdges(layer: Container) {
+    const g = new Graphics()
+    const STEPS = 6
+    const wing = PLAYFIELD_LEFT
+    for (let i = 0; i < STEPS; i++) {
+      const w = wing / STEPS
+      const alpha = 0.10 + 0.32 * ((STEPS - 1 - i) / (STEPS - 1))  // darkest at the outer edge
+      g.rect(i * w, 0, w, H).fill({ color: 0x00030a, alpha })
+      g.rect(PLAYFIELD_RIGHT + wing - (i + 1) * w, 0, w, H).fill({ color: 0x00030a, alpha })
+    }
+    g.rect(PLAYFIELD_LEFT - 1, 0, 2, H).fill({ color: 0x3388bb, alpha: 0.30 })
+    g.rect(PLAYFIELD_RIGHT - 1, 0, 2, H).fill({ color: 0x3388bb, alpha: 0.30 })
+    layer.addChild(g)
   }
 
   private startStage(stageNum: number) {

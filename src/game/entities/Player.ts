@@ -3,11 +3,12 @@ import { Actions } from '../systems/InputSystem'
 import { BulletPool } from './BulletPool'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
-import { STAGE_W, SPRITE_SCALE } from '../config'
+import { PLAYFIELD_LEFT, PLAYFIELD_RIGHT, PLAYFIELD_W, SPRITE_SCALE } from '../config'
 
 // Wide (landscape) battlefields need proportionally faster strafing or
 // crossing the field feels sluggish; portrait keeps the classic 300.
-const SPEED = 300 * Math.max(1, STAGE_W / 640)
+const SPEED = 300 * SPRITE_SCALE
+const PLAYFIELD_CENTER = PLAYFIELD_LEFT + PLAYFIELD_W / 2
 const FOCUS_SPEED_MULT = 0.4
 const BANK_ANGLE = 0.22        // max hull tilt (radians) when strafing
 const RESPAWN_DELAY = 1.1      // seconds off-screen after death
@@ -67,7 +68,7 @@ export class Player {
   ) {
     this.sprite = new Sprite(texture)
     this.sprite.anchor.set(0.5)
-    this.sprite.x = stageW / 2
+    this.sprite.x = PLAYFIELD_CENTER
     this.sprite.y = stageH * 0.8
     this.sprite.scale.set(SHIP_DISPLAY_H * SPRITE_SCALE / texture.height)
     container.addChild(this.sprite)
@@ -137,7 +138,7 @@ export class Player {
     this.sprite.visible = true
     this.sprite.alpha = 1
     this.sprite.tint = 0xffffff
-    this.sprite.x = this.stageW / 2
+    this.sprite.x = PLAYFIELD_CENTER
     this.sprite.y = this.stageH * 0.8
   }
 
@@ -163,7 +164,7 @@ export class Player {
       if (this.respawnTimer <= 0) {
         this.state = 'respawning'
         this.sprite.visible = true
-        this.sprite.x = this.stageW / 2
+        this.sprite.x = PLAYFIELD_CENTER
         this.sprite.y = this.stageH + 50
         this.sprite.rotation = 0
         this.tilt = 0
@@ -199,7 +200,7 @@ export class Player {
 
     const hw = this.sprite.width / 2
     const hh = this.sprite.height / 2
-    this.sprite.x = Math.max(hw, Math.min(this.stageW - hw, this.sprite.x))
+    this.sprite.x = Math.max(PLAYFIELD_LEFT + hw, Math.min(PLAYFIELD_RIGHT - hw, this.sprite.x))
     this.sprite.y = Math.max(hh, Math.min(this.stageH - hh, this.sprite.y))
 
     // Bank the hull into the strafe direction (lerped, so it eases in/out)

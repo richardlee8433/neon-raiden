@@ -1,4 +1,5 @@
 import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
+import { PLAYFIELD_LEFT, PLAYFIELD_RIGHT } from '../config'
 
 export interface Bullet {
   sprite: Sprite
@@ -45,14 +46,16 @@ export class BulletPool {
     }
   }
 
-  update(dt: number, stageW: number, stageH: number) {
+  /** `_stageW` is unused: bullets are culled at the combat corridor's edge,
+   *  not the stage's, so they never drift into the decorative side wings. */
+  update(dt: number, _stageW: number, stageH: number) {
     for (const b of this.pool) {
       if (!b.active) continue
       b.sprite.x += b.vx * dt
       b.sprite.y += b.vy * dt
       if (
         b.sprite.y < -20 || b.sprite.y > stageH + 20 ||
-        b.sprite.x < -20 || b.sprite.x > stageW + 20
+        b.sprite.x < PLAYFIELD_LEFT - 40 || b.sprite.x > PLAYFIELD_RIGHT + 40
       ) this.release(b)
     }
   }
