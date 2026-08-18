@@ -1,5 +1,5 @@
 import { Container, Texture } from 'pixi.js'
-import { StageConfig, WaveEntry } from '../data/stages'
+import { StageConfig, WaveEntry, EnemyPath, Formation } from '../data/stages'
 import { ENEMIES, EnemyDef } from '../data/enemies'
 import { Enemy } from '../entities/Enemy'
 import { BulletPool } from '../entities/BulletPool'
@@ -11,8 +11,30 @@ const POOL_SIZE = 160
 // so the screen stays busier without rewriting per-stage wave data.
 const DENSITY_MULT = 1.5
 
+// Seconds between successive members of a squadron entering, per formation.
+// Releasing a group as a stream instead of one simultaneous block is the
+// single biggest thing that makes a wave read as a flight of craft rather
+// than a wall dropping in. Waves can override this via WaveEntry.interval.
+const DEFAULT_INTERVAL: Record<Formation, number> = {
+  'line-top': 0.12,
+  'v-shape': 0.10,
+  'line-left': 0.16,
+  'line-right': 0.16,
+}
+
+/** A member scheduled to enter, waiting for its slot in the stream. */
+interface PendingSpawn {
+  releaseAt: number
+  x: number
+  y: number
+  def: EnemyDef
+  path: EnemyPath
+  tex: Texture
+}
+
 export class WaveSystem {
   private enemies: Enemy[] = []
+  private pending: PendingSpawn[] = []
   private textures = new Map<string, Texture>()
   private elapsed = 0
   private nextWaveIdx = 0
@@ -53,7 +75,13 @@ export class WaveSystem {
     this.dismissAll()
   }
 
-  private spawnWave(entry: WaveEntry, playerX: number) {
+  /**
+   * Queues a wave's members for release rather than activating them now.
+   * Release times are anchored to the wave's own `time`, not to the frame
+   * the scheduler happened to run on, so a stage plays out identically every
+   * run — the memorizability the genre is built on.
+   */
+  private scheduleWave(entry: WaveEntry) {
     let def: EnemyDef | undefined = ENEMIES[entry.type]
     if (!def) return
     const tex = this.textures.get(entry.type)
@@ -77,12 +105,18 @@ export class WaveSystem {
     const horizontal = entry.formation === 'line-top' || entry.formation === 'v-shape'
     const count = Math.round(entry.count * DENSITY_MULT * (horizontal ? FORMATION_SCALE : 1))
     const positions = formation(entry.formation, count, STAGE_H)
+    const interval = entry.interval ?? DEFAULT_INTERVAL[entry.formation]
+
     for (let i = 0; i < count; i++) {
-      const enemy = this.enemies.find((e) => !e.active)
-      if (!enemy) break
       const [x, y] = positions[i]
-      enemy.activate(x, y, def, entry.path, playerX, tex)
+      this.pending.push({
+        releaseAt: entry.time + i * interval,
+        x, y, def, path: entry.path, tex,
+      })
     }
+    // Two waves can share a `time`; keep the queue ordered so the drain in
+    // update() can stop at the first member that is not due yet.
+    this.pending.sort((a, b) => a.releaseAt - b.releaseAt)
   }
 
   update(dt: number, enemyBullets: BulletPool, playerX: number, playerY: number, stageH: number)
@@ -93,8 +127,18 @@ export class WaveSystem {
       this.nextWaveIdx < this.waves.length &&
       this.elapsed >= this.waves[this.nextWaveIdx].time
     ) {
-      this.spawnWave(this.waves[this.nextWaveIdx], playerX)
+      this.scheduleWave(this.waves[this.nextWaveIdx])
       this.nextWaveIdx++
+    }
+
+    // Release everything that has come due. Activating here (rather than at
+    // schedule time) means a dive locks its aim on where the player actually
+    // is as that member enters, not where they were when the wave fired.
+    while (this.pending.length && this.elapsed >= this.pending[0].releaseAt) {
+      const p = this.pending.shift()!
+      const enemy = this.enemies.find((e) => !e.active)
+      if (!enemy) continue
+      enemy.activate(p.x, p.y, p.def, p.path, playerX, p.tex)
     }
 
     const activeLasers: Array<{ x: number; fromY: number }> = []
@@ -115,6 +159,9 @@ export class WaveSystem {
   }
 
   dismissAll() {
+    // Queued members must go too, or a stream keeps trickling in during the
+    // boss WARNING banner after the field was supposedly cleared.
+    this.pending.length = 0
     for (const e of this.enemies) e.deactivate()
   }
 }
@@ -147,10 +194,13 @@ function formation(
       const half = Math.floor(count / 2)
       // Arm length fits the widest wing inside the stage
       const arm = half > 0 ? Math.min(70, ((PLAYFIELD_RIGHT - PLAYFIELD_LEFT) / 2 - 60) / half) : 0
+      const center = (PLAYFIELD_LEFT + PLAYFIELD_RIGHT) / 2
+      // Emitted apex first, then alternating wings. Same shape as before, but
+      // the index order is now the order the V should stream in.
       for (let i = 0; i < count; i++) {
-        const side = i < half ? i : count - 1 - i
-        const x = ((PLAYFIELD_LEFT + PLAYFIELD_RIGHT) / 2) + (i < half ? -1 : 1) * side * arm
-        out.push([x, -30 - side * 20])
+        const rank = Math.ceil(i / 2)
+        const dir = i % 2 === 1 ? -1 : 1
+        out.push([center + dir * rank * arm, -30 - rank * 20])
       }
       break
     }

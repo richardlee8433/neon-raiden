@@ -8,6 +8,13 @@ export interface WaveEntry {
   count: number
   formation: Formation
   path: EnemyPath
+  /**
+   * Seconds between successive members entering. A squadron is released as a
+   * stream, not popped in on a single frame, so the group reads as a flight
+   * path instead of a wall. Omit to take the per-formation default in
+   * WaveSystem; set 0 for a deliberate simultaneous wall.
+   */
+  interval?: number
 }
 
 export interface BossConfig {

@@ -3,7 +3,7 @@ import { EnemyDef } from '../data/enemies'
 import { BulletPool } from './BulletPool'
 import { EnemyPath } from '../data/stages'
 import { fireRing, fireAimedFan } from '../systems/BulletPatterns'
-import { PLAYFIELD_LEFT, PLAYFIELD_RIGHT, SPRITE_SCALE } from '../config'
+import { STAGE_H, PLAYFIELD_LEFT, PLAYFIELD_RIGHT, SPRITE_SCALE } from '../config'
 
 export type { EnemyPath }
 
@@ -25,6 +25,11 @@ export class Enemy {
   private laserDuration = 0
   private spiralAngle = 0
   private hitFlash = 0
+  private fireTimer = 0
+  // Committed dive heading (unit vector), locked once instead of re-aimed
+  private aimVx = 0
+  private aimVy = 1
+  private diveLocked = false
 
   constructor(private container: Container, texture: Texture) {
     this.sprite = new Sprite(texture)
@@ -51,6 +56,12 @@ export class Enemy {
     this.age = 0
     this.playerX = playerX
     this.laserTimer = 1 + Math.random() * 1.5  // stagger initial fire
+    // Random phase on the shot cadence. Every member of a squadron shares the
+    // same age, so a shared timer made them all fire on the same frame — one
+    // solid wall of bullets instead of fire coming from individual ships.
+    this.fireTimer = def.fireRate > 0
+      ? def.fireRate * (0.35 + Math.random() * 0.65)
+      : 0
     this.laserDuration = 0
     this.spiralAngle = Math.random() * Math.PI * 2  // desync pattern shooters
     if (def.usesLaser && !this.laserG) {
@@ -71,6 +82,13 @@ export class Enemy {
     // diagonal entry angle: 30° inward
     this.diagVx = path === 'diagonal-left'  ? -0.58 :   // tan(30°)
                   path === 'diagonal-right' ?  0.58 : 0
+
+    // A dive commits to its heading the moment it enters; a diagonal commits
+    // later, when it crosses the trigger line mid-screen.
+    this.aimVx = 0
+    this.aimVy = 1
+    this.diveLocked = false
+    if (path === 'dive') this.lockDive(x, y, playerX)
 
     const hw = (this.sprite.width  * 0.6) / 2
     const hh = (this.sprite.height * 0.6) / 2
@@ -121,41 +139,43 @@ export class Enemy {
         if (this.age % 1.2 < dt) this.zigzagDir *= -1
         break
 
-      case 'dive': {
-        // Aim past the bottom of the screen so the enemy always keeps
-        // descending and eventually exits (never stalls at the target point).
-        const dx = playerX - this.sprite.x
-        const dy = (stageH + 300) - this.sprite.y
-        const len = Math.sqrt(dx * dx + dy * dy) || 1
-        this.sprite.x += (dx / len) * spd * dt
-        this.sprite.y += (dy / len) * spd * dt
+      case 'dive':
+        // Straight, committed run along the heading locked at spawn. Re-aiming
+        // every frame made this track the player like a homing missile, which
+        // reads wrong for a dive-bomber and can't be learned or dodged on
+        // pattern — the thing the genre is built on.
+        this.sprite.x += this.aimVx * spd * dt
+        this.sprite.y += this.aimVy * spd * dt
         break
-      }
 
       case 'diagonal-left':
       case 'diagonal-right': {
-        // straight down + horizontal drift; after crossing the stage switch to a
-        // dive that also aims below the screen so it exits cleanly.
-        if (this.sprite.y < stageH * 0.35) {
+        // Straight down + horizontal drift, then one committed dive. The aim
+        // is snapshotted as it crosses the trigger line, so the turn reads as
+        // a single decisive break rather than a continuous swerve.
+        if (!this.diveLocked) {
           this.sprite.y += spd * dt
           this.sprite.x += this.diagVx * spd * dt
+          if (this.sprite.y >= stageH * 0.35) {
+            this.lockDive(this.sprite.x, this.sprite.y, playerX)
+          }
         } else {
-          const dx = playerX - this.sprite.x
-          const dy = (stageH + 300) - this.sprite.y
-          const len = Math.sqrt(dx * dx + dy * dy) || 1
-          this.sprite.x += (dx / len) * spd * 0.9 * dt
-          this.sprite.y += (dy / len) * spd * 0.9 * dt
+          this.sprite.x += this.aimVx * spd * 0.9 * dt
+          this.sprite.y += this.aimVy * spd * 0.9 * dt
         }
         break
       }
     }
 
-    // fire
+    // fire — countdown seeded with a random phase at spawn, so a squadron's
+    // shots scatter over time instead of landing as one synchronized volley
     if (this.def.fireRate > 0) {
-      const period = this.def.fireRate
-      const prev = (this.age - dt) % period
-      const curr = this.age % period
-      if (prev > curr) this.fire(bulletPool, playerX, playerY)
+      this.fireTimer -= dt
+      if (this.fireTimer <= 0) {
+        this.fireTimer += this.def.fireRate
+        if (this.fireTimer <= 0) this.fireTimer = this.def.fireRate   // dt spike
+        this.fire(bulletPool, playerX, playerY)
+      }
     }
 
     // off-screen cull, plus a hard max-age failsafe so an enemy can never
@@ -180,6 +200,20 @@ export class Enemy {
         this.laserG.clear()
       }
     }
+  }
+
+  /**
+   * Snapshots a dive heading toward the player, aimed at a point well below
+   * the screen so the run always keeps descending and exits cleanly. Because
+   * the target is fixed, the resulting path is a straight line.
+   */
+  private lockDive(x: number, y: number, targetX: number) {
+    const dx = targetX - x
+    const dy = (STAGE_H + 300) - y
+    const len = Math.sqrt(dx * dx + dy * dy) || 1
+    this.aimVx = dx / len
+    this.aimVy = dy / len
+    this.diveLocked = true
   }
 
   private fire(pool: BulletPool, playerX: number, playerY: number) {
