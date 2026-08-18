@@ -381,7 +381,10 @@ export class GameApp {
       }
     }
     if (this.boss.active) {
-      const died = this.boss.hit(5)
+      // Proportional, not flat: a bomb has always been worth ~8% of a boss's
+      // hull, and hardcoding 5 would have silently made bombs useless against
+      // bosses the moment their HP was retuned.
+      const died = this.boss.hit(Math.max(5, this.boss.maxHp * 0.08))
       this.explosions.spawn(this.boss.sprite.x, this.boss.sprite.y, 3)
       audioSystem.playExplosion('large')
       if (died) {

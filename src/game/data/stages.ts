@@ -62,7 +62,7 @@ const stage1: StageConfig = {
   boss: {
     shipSprite: './assets/ships/boss1-dreadnought.png',
     displayW: 300, flipY: false,
-    maxHp: 60, speedMult: 1, bulletSpeedMult: 1, fireRateMult: 1, scoreValue: 5000,
+    maxHp: 500, speedMult: 1, bulletSpeedMult: 1, fireRateMult: 1, scoreValue: 5000,
   },
 }
 
@@ -92,7 +92,7 @@ const stage2: StageConfig = {
   boss: {
     shipSprite: './assets/ships/boss2-cruiser.png',
     displayW: 235, flipY: true,
-    maxHp: 80, speedMult: 1.3, bulletSpeedMult: 1.25, fireRateMult: 0.8, scoreValue: 8000,
+    maxHp: 600, speedMult: 1.3, bulletSpeedMult: 1.25, fireRateMult: 0.8, scoreValue: 8000,
   },
 }
 
@@ -123,7 +123,7 @@ const stage3: StageConfig = {
   boss: {
     shipSprite: './assets/ships/boss3-fortress.png',
     displayW: 310, flipY: true,
-    maxHp: 100, speedMult: 1.6, bulletSpeedMult: 1.5, fireRateMult: 0.65, scoreValue: 12000,
+    maxHp: 850, speedMult: 1.6, bulletSpeedMult: 1.5, fireRateMult: 0.65, scoreValue: 12000,
   },
 }
 
