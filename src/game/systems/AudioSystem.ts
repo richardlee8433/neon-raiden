@@ -1,12 +1,25 @@
 import { gameStore } from '../../store/gameStore'
+import { sampleBank } from './SampleBank'
+import { SFX } from '../data/audio'
+
+// Sample playback for every game sound. The public API is unchanged from the
+// synthesized version it replaces — call sites keep calling playShoot(),
+// playExplosion() and friends; only what comes out of the speaker changed.
 
 class AudioSystem {
   private ctx: AudioContext | null = null
-  private shootThrottle = 0   // epoch ms of last shoot sound
-  private grazeThrottle = 0   // epoch ms of last graze tick
 
   private get enabled(): boolean {
     return gameStore.getState().soundEnabled
+  }
+
+  /**
+   * Starts fetching samples. Needs no AudioContext (and so no user gesture),
+   * so call it during startup — by the time the player presses START the
+   * bytes are usually already in memory, waiting to be decoded.
+   */
+  preload(): Promise<void> {
+    return sampleBank.prefetch()
   }
 
   private getCtx(): AudioContext | null {
@@ -14,245 +27,66 @@ class AudioSystem {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext ??
         (window as any).webkitAudioContext)()
+      // First context means the page has been interacted with: decode now.
+      sampleBank.attach(this.ctx).catch((e) => console.error('[audio]', e))
     }
     if (this.ctx.state === 'suspended') this.ctx.resume()
     return this.ctx
   }
 
-  // ── Shoot (laser chirp) ─────────────────────────────────────────────────
+  private fire(def: typeof SFX[keyof typeof SFX], rate = 1, gain = 1) {
+    if (!this.getCtx()) return
+    sampleBank.play(def, rate, gain)
+  }
+
+  // ── weapons ─────────────────────────────────────────────────────────────
   playShoot(power = 0) {
-    const now = Date.now()
-    if (now - this.shootThrottle < 75) return   // max ~13 beeps/s
-    this.shootThrottle = now
-
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-    const freq = 700 + power * 55
-
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sawtooth'
-    osc.frequency.setValueAtTime(freq, t)
-    osc.frequency.exponentialRampToValueAtTime(160, t + 0.08)
-    gain.gain.setValueAtTime(0.10, t)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09)
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.start(t)
-    osc.stop(t + 0.1)
+    // Higher power reads as a slightly brighter shot, as it did before.
+    this.fire(SFX.shoot, 1 + power * 0.035)
   }
 
-  // ── Explosion ───────────────────────────────────────────────────────────
-  playExplosion(size: 'small' | 'large' | 'boss' = 'small') {
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-
-    const dur      = size === 'small' ? 0.22 : size === 'large' ? 0.45 : 0.75
-    const cutoff   = size === 'small' ? 1800 : size === 'large' ?  700 : 350
-    const vol      = size === 'small' ?  0.28 : size === 'large' ? 0.45 : 0.60
-
-    // White-noise burst
-    const samples = Math.floor(ctx.sampleRate * dur)
-    const buf = ctx.createBuffer(1, samples, ctx.sampleRate)
-    const d = buf.getChannelData(0)
-    for (let i = 0; i < samples; i++) d[i] = Math.random() * 2 - 1
-
-    const noise = ctx.createBufferSource()
-    noise.buffer = buf
-
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = cutoff
-
-    const gn = ctx.createGain()
-    gn.gain.setValueAtTime(vol, t)
-    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-
-    noise.connect(lp); lp.connect(gn); gn.connect(ctx.destination)
-    noise.start(t); noise.stop(t + dur)
-
-    // Low-frequency thump for large / boss
-    if (size !== 'small') {
-      const osc = ctx.createOscillator()
-      const og  = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(90, t)
-      osc.frequency.exponentialRampToValueAtTime(25, t + dur * 0.5)
-      og.gain.setValueAtTime(0.4, t)
-      og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.5)
-      osc.connect(og); og.connect(ctx.destination)
-      osc.start(t); osc.stop(t + dur * 0.5)
-    }
-  }
-
-  // ── Pickup ──────────────────────────────────────────────────────────────
-  playPickup(type: 'power' | 'bomb' | 'life') {
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const freqs = type === 'power' ? [523, 659, 784]   // C E G  — bright arpeggio
-                : type === 'life'  ? [659, 784, 1047]  // E G C  — joyful high
-                : [392, 494, 587]                       // G B D  — deeper arpeggio
-
-    freqs.forEach((freq, i) => {
-      const osc  = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = freq
-      const t = ctx.currentTime + i * 0.06
-      gain.gain.setValueAtTime(0.18, t)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12)
-      osc.connect(gain); gain.connect(ctx.destination)
-      osc.start(t); osc.stop(t + 0.14)
-    })
-  }
-
-  // ── Bomb (screen-clear) ─────────────────────────────────────────────────
-  playBomb() {
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-
-    // Deep sawtooth rumble
-    const osc = ctx.createOscillator()
-    const og  = ctx.createGain()
-    osc.type = 'sawtooth'
-    osc.frequency.setValueAtTime(65, t)
-    osc.frequency.exponentialRampToValueAtTime(18, t + 0.5)
-    og.gain.setValueAtTime(0.4, t)
-    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.5)
-    osc.connect(og); og.connect(ctx.destination)
-    osc.start(t); osc.stop(t + 0.5)
-
-    // Wide noise burst
-    const samples = Math.floor(ctx.sampleRate * 0.4)
-    const buf = ctx.createBuffer(1, samples, ctx.sampleRate)
-    const d = buf.getChannelData(0)
-    for (let i = 0; i < samples; i++) d[i] = Math.random() * 2 - 1
-
-    const noise = ctx.createBufferSource()
-    noise.buffer = buf
-    const bp = ctx.createBiquadFilter()
-    bp.type = 'bandpass'
-    bp.frequency.value = 350
-    bp.Q.value = 0.4
-    const gn = ctx.createGain()
-    gn.gain.setValueAtTime(0.55, t)
-    gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.4)
-    noise.connect(bp); bp.connect(gn); gn.connect(ctx.destination)
-    noise.start(t); noise.stop(t + 0.4)
-  }
-
-  // ── Gem collect (pitch climbs with the pickup streak) ───────────────────
-  playGem(streak = 1) {
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-    // one semitone per consecutive gem, capped at an octave
-    const freq = 880 * Math.pow(2, Math.min(streak - 1, 12) / 12)
-
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(freq, t)
-    gain.gain.setValueAtTime(0.14, t)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(t); osc.stop(t + 0.12)
-
-    // faint fifth above for sparkle
-    const osc2  = ctx.createOscillator()
-    const gain2 = ctx.createGain()
-    osc2.type = 'sine'
-    osc2.frequency.setValueAtTime(freq * 1.5, t)
-    gain2.gain.setValueAtTime(0.05, t)
-    gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.08)
-    osc2.connect(gain2); gain2.connect(ctx.destination)
-    osc2.start(t); osc2.stop(t + 0.09)
-  }
-
-  // ── Graze (near-miss tick) ──────────────────────────────────────────────
-  playGraze() {
-    const now = Date.now()
-    if (now - this.grazeThrottle < 45) return   // bullets graze in clusters
-    this.grazeThrottle = now
-
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'square'
-    osc.frequency.setValueAtTime(2400, t)
-    osc.frequency.exponentialRampToValueAtTime(3400, t + 0.03)
-    gain.gain.setValueAtTime(0.045, t)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(t); osc.stop(t + 0.06)
-  }
-
-  // ── Player hit ──────────────────────────────────────────────────────────
-  playPlayerHit() {
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-
-    const samples = Math.floor(ctx.sampleRate * 0.18)
-    const buf = ctx.createBuffer(1, samples, ctx.sampleRate)
-    const d = buf.getChannelData(0)
-    for (let i = 0; i < samples; i++) d[i] = Math.random() * 2 - 1
-
-    const noise = ctx.createBufferSource()
-    noise.buffer = buf
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 500
-    const gn = ctx.createGain()
-    gn.gain.setValueAtTime(0.5, t)
-    gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.18)
-    noise.connect(lp); lp.connect(gn); gn.connect(ctx.destination)
-    noise.start(t); noise.stop(t + 0.2)
-  }
-
-  // ── Boss warning siren (two-tone air-raid sweep) ────────────────────────
-  playSiren() {
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sawtooth'
-    // three rising-falling wails over ~2.2s
-    for (let i = 0; i < 3; i++) {
-      const s = t + i * 0.72
-      osc.frequency.setValueAtTime(440, s)
-      osc.frequency.linearRampToValueAtTime(760, s + 0.36)
-      osc.frequency.linearRampToValueAtTime(440, s + 0.72)
-    }
-    gain.gain.setValueAtTime(0.12, t)
-    gain.gain.setValueAtTime(0.12, t + 2.05)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.25)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(t); osc.stop(t + 2.3)
-  }
-
-  // ── Boss hurt ───────────────────────────────────────────────────────────
   playBossHurt() {
-    const ctx = this.getCtx()
-    if (!ctx) return
-    const t = ctx.currentTime
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sawtooth'
-    osc.frequency.setValueAtTime(280, t)
-    osc.frequency.exponentialRampToValueAtTime(90, t + 0.09)
-    gain.gain.setValueAtTime(0.14, t)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(t); osc.stop(t + 0.1)
+    this.fire(SFX['boss-hurt'])
+  }
+
+  // ── explosions ──────────────────────────────────────────────────────────
+  playExplosion(size: 'small' | 'large' | 'boss' = 'small') {
+    this.fire(
+      size === 'boss' ? SFX['explosion-boss']
+        : size === 'large' ? SFX['explosion-large']
+          : SFX['explosion-small'],
+    )
+  }
+
+  playBomb() {
+    this.fire(SFX.bomb)
+  }
+
+  playPlayerHit() {
+    this.fire(SFX['player-hit'], 0.9)
+  }
+
+  // ── pickups & feedback ──────────────────────────────────────────────────
+  playPickup(type: 'power' | 'bomb' | 'life') {
+    this.fire(
+      type === 'life' ? SFX['pickup-life']
+        : type === 'bomb' ? SFX['pickup-bomb']
+          : SFX['pickup-power'],
+    )
+  }
+
+  /** Collect chime climbing one semitone per consecutive gem, as before. */
+  playGem(streak = 1) {
+    const semitones = Math.min(Math.max(streak - 1, 0), 12)
+    this.fire(SFX.gem, Math.pow(2, semitones / 12))
+  }
+
+  playGraze() {
+    this.fire(SFX.graze)
+  }
+
+  playSiren() {
+    this.fire(SFX.siren)
   }
 }
 

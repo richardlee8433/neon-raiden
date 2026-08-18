@@ -78,6 +78,10 @@ export class GameApp {
       resizeTo: undefined,
     })
 
+    // Fire-and-forget: pulls the SFX bytes while the textures load, so they
+    // are ready to decode the instant the first AudioContext exists.
+    audioSystem.preload().catch((e) => console.error('[audio]', e))
+
     const assets = await loadAssets()
     console.log('[GameApp] assets loaded')
 
@@ -150,15 +154,13 @@ export class GameApp {
     // Phase transitions
     gameStore.subscribe((s, prev) => {
       if (s.phase === 'playing' && prev.phase === 'title') {
-        this.startStage(s.stage)
-        musicSystem.start()
+        this.startStage(s.stage)   // startStage owns the per-stage BGM
       }
       if (s.phase === 'stageclear' && prev.phase !== 'stageclear') {
         this.handleStageClear(s.stage)
       }
-      if ((s.phase === 'gameover' || s.phase === 'title') && s.phase !== prev.phase) {
-        musicSystem.stop()
-      }
+      if (s.phase === 'gameover' && s.phase !== prev.phase) musicSystem.stop()
+      if (s.phase === 'title' && s.phase !== prev.phase) musicSystem.playTitle()
     })
 
     // Catch-up: on slow networks (VIVERSE/Netlify CDN) the player can press
@@ -167,7 +169,6 @@ export class GameApp {
     // would spawn. If we're already mid-"playing", start the stage now.
     if (gameStore.getState().phase === 'playing') {
       this.startStage(gameStore.getState().stage)
-      musicSystem.start()
     }
 
     this.app.ticker.add(({ deltaMS }) => {
@@ -197,6 +198,7 @@ export class GameApp {
 
   private startStage(stageNum: number) {
     const cfg = STAGES[stageNum - 1] ?? STAGES[0]
+    musicSystem.playStage(stageNum)
     this.scroll.setTheme(cfg.bgTheme)
     this.waves.loadStage(cfg)
     this.playerBullets.releaseAll()
@@ -217,6 +219,7 @@ export class GameApp {
   private handleStageClear(_stageNum: number) {
     if (this.transitioning) return
     this.transitioning = true
+    musicSystem.playJingle('stage-clear')
 
     // Advance to the next stage — advanceStage wraps past the last stage
     // into the next loop, where enemies come back faster and meaner.
@@ -264,6 +267,9 @@ export class GameApp {
       this.bossCountdown = 2.4
       gameStore.getState().setBossWarning(true)
       audioSystem.playSiren()
+      // The boss theme's 2.1s intro runs under the 2.4s WARNING banner, so
+      // its main loop drops exactly as the boss finishes entering.
+      musicSystem.playBoss()
       this.waves.dismissAll()
       this.enemyBullets.releaseAll()
       // Warm the browser cache during the siren — boss art runs to a few
