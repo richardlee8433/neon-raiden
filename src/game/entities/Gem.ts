@@ -28,6 +28,7 @@ export class GemPool {
     for (let i = 0; i < size; i++) {
       const sprite = new Sprite(texture)
       sprite.anchor.set(0.5)
+      sprite.scale.set(0.65 * SPRITE_SCALE)
       sprite.visible = false
       container.addChild(sprite)
       this.pool.push({ sprite, vx: 0, vy: 0, active: false, magnet: false })

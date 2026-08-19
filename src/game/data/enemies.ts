@@ -15,20 +15,20 @@ export interface EnemyDef {
 export const ENEMIES: Record<string, EnemyDef> = {
   // ── Stage 1 ───────────────────────────────────────────────
   fighter: {
-    sprite: './assets/kenney/Ships/ship_0001.png',
+    sprite: './assets/enemies/enemy-fighter.png',
     hp: 1, speed: 120, scoreValue: 100,
-    fireRate: 1.4, bulletSpeed: 230, scale: 1.5,
+    fireRate: 1.4, bulletSpeed: 230, scale: 0.78,
   },
   bomber: {
-    sprite: './assets/kenney/Ships/ship_0003.png',
+    sprite: './assets/enemies/enemy-bomber.png',
     hp: 3, speed: 70, scoreValue: 300,
-    fireRate: 1.4, bulletSpeed: 170, scale: 2,
+    fireRate: 1.4, bulletSpeed: 170, scale: 0.82,
     attackType: 'ring', bulletCount: 8,
   },
   scout: {
-    sprite: './assets/kenney/Ships/ship_0005.png',
+    sprite: './assets/enemies/enemy-scout.png',
     hp: 1, speed: 200, scoreValue: 150,
-    fireRate: 2.0, bulletSpeed: 210, scale: 1.2,
+    fireRate: 2.0, bulletSpeed: 210, scale: 0.72,
   },
   // ── Stage 2 ───────────────────────────────────────────────
   interceptor: {
