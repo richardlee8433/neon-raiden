@@ -26,10 +26,11 @@ function intersects(a: Rectangle, b: Rectangle): boolean {
 const GRAZE_RADIUS = 22 * SPRITE_SCALE
 const BULLET_R = 3 * SPRITE_SCALE   // half-size of a bullet's collision box
 
-const ENEMY_LIFE_CHANCE   = 0.04   // 4%
-const ENEMY_BOMB_CHANCE   = 0.10   // 6%
-const ENEMY_LASER_CHANCE  = 0.18   // 8%
-const ENEMY_DROP_CHANCE   = 0.32   // 14% — bullet power (cumulative)
+const ENEMY_ONEUP_CHANCE  = 0.02   // 2%
+const ENEMY_BOMB_CHANCE   = 0.08   // 6%
+const ENEMY_LASER_CHANCE  = 0.16   // 8%
+const ENEMY_PLASMA_CHANCE = 0.24   // 8%
+const ENEMY_DROP_CHANCE   = 0.38   // 14% — Vulcan (cumulative)
 
 export class CollisionSystem {
   check(
@@ -54,7 +55,7 @@ export class CollisionSystem {
       for (const enemy of enemies) {
         if (!intersects(br, enemy.hitboxWorld)) continue
         playerBullets.release(bullet)
-        enemy.hp--
+        enemy.hp -= bullet.damage
         if (enemy.hp > 0) enemy.flash()
         if (enemy.hp <= 0) {
           explosions.spawn(enemy.sprite.x, enemy.sprite.y, 2)
@@ -64,9 +65,10 @@ export class CollisionSystem {
           const { awarded, mult } = gameStore.getState().addKillScore(enemy.scoreValue)
           floats.spawn(enemy.sprite.x, enemy.sprite.y - 10, `+${awarded}`, multColor(mult))
           const roll = Math.random()
-          if (roll < ENEMY_LIFE_CHANCE)             pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'life')
+          if (roll < ENEMY_ONEUP_CHANCE)            pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'oneup')
           else if (roll < ENEMY_BOMB_CHANCE)        pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'bomb')
           else if (roll < ENEMY_LASER_CHANCE)       pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'laser')
+          else if (roll < ENEMY_PLASMA_CHANCE)      pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'plasma')
           else if (roll < ENEMY_DROP_CHANCE)        pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'power')
           gems.spawn(enemy.sprite.x, enemy.sprite.y, Math.random() < 0.35 ? 2 : 1)
           enemy.deactivate()
@@ -78,7 +80,7 @@ export class CollisionSystem {
       if (boss?.active) {
         if (intersects(br, boss.hitboxWorld)) {
           playerBullets.release(bullet)
-          const died = boss.hit(1)
+          const died = boss.hit(bullet.damage)
           screenShake.trigger(died ? 5 : 3)
           audioSystem.playBossHurt()
           if (died) {

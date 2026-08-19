@@ -7,6 +7,7 @@ export interface Bullet {
   vy: number
   active: boolean
   grazed: boolean  // already awarded a graze; reset on acquire
+  damage: number
 }
 
 export class BulletPool {
@@ -18,19 +19,25 @@ export class BulletPool {
       sprite.anchor.set(0.5)
       sprite.visible = false
       container.addChild(sprite)
-      this.pool.push({ sprite, vx: 0, vy: 0, active: false, grazed: false })
+      this.pool.push({ sprite, vx: 0, vy: 0, active: false, grazed: false, damage: 1 })
     }
   }
 
-  acquire(x: number, y: number, vx: number, vy: number): Bullet | null {
+  acquire(
+    x: number, y: number, vx: number, vy: number,
+    damage = 1, tint = 0xffffff, scale = 1,
+  ): Bullet | null {
     const b = this.pool.find((b) => !b.active)
     if (!b) return null
     b.active = true
     b.grazed = false
     b.vx = vx
     b.vy = vy
+    b.damage = damage
     b.sprite.x = x
     b.sprite.y = y
+    b.sprite.tint = tint
+    b.sprite.scale.set(scale)
     b.sprite.visible = true
     return b
   }

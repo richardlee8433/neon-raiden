@@ -138,7 +138,11 @@ export class GameApp {
 
     this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
     this.boss      = new Boss(this.gameLayer)
-    this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb, assets.pickupLife, assets.pickupLaser)
+    this.pickups   = new PickupPool(
+      this.gameLayer,
+      assets.pickupPower, assets.pickupBomb, assets.pickupOneUp,
+      assets.pickupLaser, assets.pickupPlasma,
+    )
     this.gems      = new GemPool(this.gameLayer, assets.gem)
     this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
@@ -294,9 +298,9 @@ export class GameApp {
       }
     }
 
-    const laserPower = gameStore.getState().laserPower
+    const { weapon, laserPower } = gameStore.getState()
     this.laser.update(
-      dt, this.player.firingLaser,
+      dt, weapon === 'laser' && this.player.firingLaser,
       this.player.x, this.player.y,
       laserPower,
       this.waves.activeEnemies,
@@ -357,8 +361,9 @@ export class GameApp {
     const s = gameStore.getState()
     s.resetChain()   // death breaks the kill chain
     s.dropPower()
-    this.pickups.spawn(this.player.x - 30, this.player.y - 60, 'power')
-    this.pickups.spawn(this.player.x + 30, this.player.y - 60, 'power')
+    const droppedWeapon = s.weapon === 'vulcan' ? 'power' : s.weapon
+    this.pickups.spawn(this.player.x - 30, this.player.y - 60, droppedWeapon)
+    this.pickups.spawn(this.player.x + 30, this.player.y - 60, droppedWeapon)
     s.loseLife()
     if (s.lives <= 1) s.setPhase('gameover')
   }

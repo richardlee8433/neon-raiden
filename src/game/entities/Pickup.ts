@@ -3,7 +3,7 @@ import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
 import { SPRITE_SCALE } from '../config'
 
-export type PickupType = 'power' | 'bomb' | 'life' | 'laser'
+export type PickupType = 'power' | 'bomb' | 'oneup' | 'laser' | 'plasma'
 
 interface PickupInstance {
   sprite: Sprite
@@ -21,8 +21,9 @@ export class PickupPool {
     private container: Container,
     private texPower: Texture,
     private texBomb: Texture,
-    private texLife: Texture,
+    private texOneUp: Texture,
     private texLaser: Texture,
+    private texPlasma: Texture,
     size = 20,
   ) {
     for (let i = 0; i < size; i++) {
@@ -43,8 +44,9 @@ export class PickupPool {
     inst.active = true
     inst.type = type
     inst.sprite.texture = type === 'power' ? this.texPower
-                        : type === 'life'  ? this.texLife
+                        : type === 'oneup' ? this.texOneUp
                         : type === 'laser' ? this.texLaser
+                        : type === 'plasma' ? this.texPlasma
                         : this.texBomb
     inst.sprite.x = x
     inst.sprite.y = y
@@ -63,10 +65,11 @@ export class PickupPool {
       if (dx * dx + dy * dy < COLLECT_RADIUS * COLLECT_RADIUS) {
         const s = gameStore.getState()
         if (inst.type === 'power')       s.addPower(1)
-        else if (inst.type === 'life')   s.addLife()
+        else if (inst.type === 'oneup')  s.addLife()
         else if (inst.type === 'laser')  s.addLaserPower()
+        else if (inst.type === 'plasma') s.addPlasmaPower()
         else gameStore.setState((gs) => ({ bombs: Math.min(5, gs.bombs + 1) }))
-        audioSystem.playPickup(inst.type === 'laser' ? 'power' : inst.type === 'life' ? 'life' : inst.type === 'bomb' ? 'bomb' : 'power')
+        audioSystem.playPickup(inst.type === 'oneup' ? 'life' : inst.type === 'bomb' ? 'bomb' : 'power')
         inst.active = false
         inst.sprite.visible = false
         continue

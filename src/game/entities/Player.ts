@@ -27,20 +27,26 @@ const HITBOX_SIZE = 6 * SPRITE_SCALE
 const SHIP_DISPLAY_H = 72
 const BULLET_SPEED = 620
 
-// Each entry is an array of [vx_norm, vy_norm] direction vectors per power level.
-// vy is always negative (upward). vx gives the spread angle.
-//   sin(10°)≈0.17  sin(15°)≈0.26  sin(20°)≈0.34
-//   cos(10°)≈0.98  cos(15°)≈0.97  cos(20°)≈0.94
-const SHOT_PATTERNS: [number, number][][] = [
-  [[0, -1]],                                                          // power 0 – 1 shot
-  [[-0.17, -0.98], [0.17, -0.98]],                                    // power 1 – 2 shots
-  [[-0.26, -0.97], [0, -1], [0.26, -0.97]],                          // power 2 – 3 shots
-  [[-0.34, -0.94], [-0.12, -0.99], [0.12, -0.99], [0.34, -0.94]],   // power 3 – 4 shots
-  [[-0.34, -0.94], [-0.17, -0.98], [0, -1], [0.17, -0.98], [0.34, -0.94]], // power 4 – 5 shots
-  [[-0.34, -0.94], [-0.17, -0.98], [0, -1], [0.17, -0.98], [0.34, -0.94]], // power 5 – 5 shots fast
+// Vulcan stays focused and flexible; Plasma trades single-target damage for
+// broad screen coverage. Both keep their level while another weapon is active.
+const VULCAN_PATTERNS: [number, number][][] = [
+  [[0, -1]],
+  [[-0.07, -1], [0.07, -1]],
+  [[-0.10, -0.995], [0, -1], [0.10, -0.995]],
+  [[-0.14, -0.99], [-0.04, -1], [0.04, -1], [0.14, -0.99]],
+  [[-0.16, -0.987], [-0.08, -0.997], [0, -1], [0.08, -0.997], [0.16, -0.987]],
 ]
 
-const FIRE_RATE = [0.14, 0.13, 0.12, 0.11, 0.10, 0.08]  // decreases with power
+const PLASMA_PATTERNS: [number, number][][] = [
+  [[-0.30, -0.95], [0, -1], [0.30, -0.95]],
+  [[-0.38, -0.92], [-0.13, -0.99], [0.13, -0.99], [0.38, -0.92]],
+  [[-0.46, -0.89], [-0.23, -0.97], [0, -1], [0.23, -0.97], [0.46, -0.89]],
+  [[-0.50, -0.87], [-0.30, -0.95], [-0.10, -0.995], [0.10, -0.995], [0.30, -0.95], [0.50, -0.87]],
+  [[-0.54, -0.84], [-0.36, -0.93], [-0.18, -0.98], [0, -1], [0.18, -0.98], [0.36, -0.93], [0.54, -0.84]],
+]
+
+const VULCAN_FIRE_RATE = [0.14, 0.13, 0.12, 0.10, 0.08]
+const PLASMA_FIRE_RATE = [0.28, 0.27, 0.25, 0.23, 0.21]
 
 export class Player {
   sprite: Sprite
@@ -210,18 +216,29 @@ export class Player {
     this.sprite.rotation = this.tilt
 
     const state = gameStore.getState()
-    const power = Math.min(4, Math.max(0, state.power))
-    this.firingLaser = fire && state.laserPower > 0
+    const weapon = state.weapon
+    const power = weapon === 'plasma'
+      ? Math.min(4, Math.max(0, state.plasmaPower))
+      : Math.min(4, Math.max(0, state.power))
+    this.firingLaser = fire && weapon === 'laser' && state.laserPower > 0
 
-    const rate    = FIRE_RATE[power]
-    const pattern = SHOT_PATTERNS[power]
+    const rate = weapon === 'plasma' ? PLASMA_FIRE_RATE[power] : VULCAN_FIRE_RATE[power]
+    const pattern = weapon === 'plasma' ? PLASMA_PATTERNS[power] : VULCAN_PATTERNS[power]
     this.fireTimer -= dt
-    if (fire && this.fireTimer <= 0) {
+    if (fire && weapon !== 'laser' && this.fireTimer <= 0) {
       this.fireTimer = rate
       const ox = this.sprite.x
       const oy = this.sprite.y - 20
       for (const [nx, ny] of pattern) {
-        this.bulletPool.acquire(ox, oy, nx * BULLET_SPEED, ny * BULLET_SPEED)
+        const plasma = weapon === 'plasma'
+        this.bulletPool.acquire(
+          ox, oy,
+          nx * (plasma ? BULLET_SPEED * 0.82 : BULLET_SPEED),
+          ny * (plasma ? BULLET_SPEED * 0.82 : BULLET_SPEED),
+          plasma ? 0.62 : 1,
+          plasma ? 0xff55ee : 0xffffff,
+          plasma ? 1.35 : 1,
+        )
       }
       audioSystem.playShoot(power)
     }
