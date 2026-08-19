@@ -6,6 +6,8 @@ export function chainMult(chain: number): number {
   return chain >= 20 ? 8 : chain >= 10 ? 4 : chain >= 5 ? 2 : 1
 }
 
+export type WeaponType = 'vulcan' | 'laser' | 'plasma'
+
 interface GameState {
   score: number
   hiScore: number
@@ -16,6 +18,8 @@ interface GameState {
   bombs: number
   power: number
   laserPower: number
+  plasmaPower: number
+  weapon: WeaponType
   stage: number
   phase: 'title' | 'playing' | 'stageclear' | 'advancing' | 'gameover'
   bossHp: number
@@ -33,6 +37,7 @@ interface GameState {
   addLife: () => void
   addPower: (n: number) => void
   addLaserPower: () => void
+  addPlasmaPower: () => void
   dropPower: () => void
   useBomb: () => boolean
   setPhase: (p: GameState['phase']) => void
@@ -47,7 +52,8 @@ interface GameState {
 
 const freshPlay = {
   score: 0, graze: 0, chain: 0, loop: 1,
-  lives: 3, bombs: 3, power: 0, laserPower: 0,
+  lives: 3, bombs: 3, power: 0, laserPower: 0, plasmaPower: 0,
+  weapon: 'vulcan' as WeaponType,
   stage: 1, phase: 'playing' as const,
   bossHp: 0, bossMaxHp: 1, bossActive: false, bossWarning: false,
   paused: false,
@@ -122,10 +128,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   loseLife: () => set((s) => ({ lives: Math.max(0, s.lives - 1) })),
   addLife: () => set((s) => ({ lives: Math.min(5, s.lives + 1) })),
-  addPower: (n) => set((s) => ({ power: Math.min(4, s.power + n) })),
-  addLaserPower: () => set((s) => ({ laserPower: Math.min(5, s.laserPower + 1) })),
+  addPower: (n) => set((s) => ({
+    weapon: 'vulcan',
+    power: Math.min(4, s.power + n),
+  })),
+  addLaserPower: () => set((s) => ({
+    weapon: 'laser',
+    laserPower: Math.min(5, s.laserPower + 1),
+  })),
+  addPlasmaPower: () => set((s) => ({
+    weapon: 'plasma',
+    plasmaPower: Math.min(4, s.plasmaPower + 1),
+  })),
   // death penalty: lose two weapon levels (some scatter as recoverable pickups)
-  dropPower: () => set((s) => ({ power: Math.max(0, s.power - 2) })),
+  dropPower: () => set((s) => (
+    s.weapon === 'laser'  ? { laserPower: Math.max(1, s.laserPower - 2) }
+  : s.weapon === 'plasma' ? { plasmaPower: Math.max(0, s.plasmaPower - 2) }
+                          : { power: Math.max(0, s.power - 2) }
+  )),
   useBomb: () => {
     if (get().bombs <= 0) return false
     set((s) => ({ bombs: Math.max(0, s.bombs - 1) }))

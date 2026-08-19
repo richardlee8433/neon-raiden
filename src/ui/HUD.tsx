@@ -16,38 +16,20 @@ function triggerBomb() {
   }, 120)
 }
 
-function MeterBar({ label, ratio, color, glow }: {
-  label: string
-  ratio: number
-  color: string
-  glow?: boolean
-}) {
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-      {label}
-      <span style={{
-        display: 'inline-block', width: 40, height: 6,
-        background: '#333', borderRadius: 3, overflow: 'hidden',
-      }}>
-        <span style={{
-          display: 'block', height: '100%',
-          width: `${ratio * 100}%`,
-          background: color,
-          transition: 'width 0.2s',
-          boxShadow: glow ? `0 0 4px ${color}` : 'none',
-        }} />
-      </span>
-    </span>
-  )
-}
-
 export function HUD() {
-  const { score, hiScore, graze, chain, loop, lives, bombs, power, laserPower,
+  const { score, hiScore, graze, chain, loop, lives, bombs, weapon,
           bossActive, bossHp, bossMaxHp, bossWarning,
           soundEnabled, toggleSound } = useGameStore()
   const mult = chainMult(chain)
   const chainColor = mult >= 8 ? '#ff44aa' : mult >= 4 ? '#ff9933'
                    : mult >= 2 ? '#ffee44' : '#cccccc'
+  const weaponLabel = weapon === 'vulcan' ? 'VULCAN' : weapon === 'laser' ? 'LASER' : 'PLASMA'
+  const weaponColor = weapon === 'vulcan' ? '#ff9a33' : weapon === 'laser' ? '#44ddff' : '#ff55ee'
+  const weaponLine = (
+    <span style={{ color: weaponColor, fontWeight: 'bold', textShadow: `0 0 6px ${weaponColor}` }}>
+      {weaponLabel}
+    </span>
+  )
 
   const mono = {
     color: '#fff', fontFamily: 'monospace', fontSize: 13,
@@ -125,13 +107,7 @@ export function HUD() {
           }}>
             <span>{'♥'.repeat(Math.max(0, lives))}</span>
             <span>{'💣'.repeat(Math.max(0, bombs))}</span>
-            <MeterBar label="BLT" ratio={power / 4} color="#ffee00" />
-            <MeterBar
-              label="LZR"
-              ratio={laserPower / 5}
-              color={laserPower > 0 ? '#44ddff' : '#333'}
-              glow={laserPower > 0}
-            />
+            {weaponLine}
             <span style={{ pointerEvents: 'all', marginTop: 4 }}>{soundButton}</span>
           </div>
         </>
@@ -147,15 +123,7 @@ export function HUD() {
             <span>SCORE {String(score).padStart(6, '0')}</span>
             <span>HI {String(hiScore).padStart(6, '0')}</span>
             <span>{'♥'.repeat(Math.max(0, lives))}{'  '}{'💣'.repeat(Math.max(0, bombs))}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <MeterBar label="BLT" ratio={power / 4} color="#ffee00" />
-              <MeterBar
-                label="LZR"
-                ratio={laserPower / 5}
-                color={laserPower > 0 ? '#44ddff' : '#333'}
-                glow={laserPower > 0}
-              />
-            </span>
+            {weaponLine}
             {soundButton}
           </div>
 
