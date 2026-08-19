@@ -6,6 +6,8 @@ import { ExplosionPool } from './Explosion'
 import { FloatingTextPool, multColor } from './FloatingText'
 import { screenShake } from './ScreenShake'
 import { gameStore } from '../../store/gameStore'
+import { PickupPool } from '../entities/Pickup'
+import { spawnEnemyDrop } from '../systems/DropSystem'
 
 const DMG_PER_SEC = 30
 // Bosses resist the beam, otherwise parking on one melts it in seconds
@@ -31,6 +33,7 @@ export class LaserBeam {
     explosions: ExplosionPool,
     gems: GemPool,
     floats: FloatingTextPool,
+    pickups: PickupPool,
   ) {
     this.g.clear()
 
@@ -75,6 +78,7 @@ export class LaserBeam {
         const { awarded, mult } = gameStore.getState().addKillScore(e.scoreValue)
         floats.spawn(e.sprite.x, e.sprite.y - 10, `+${awarded}`, multColor(mult))
         gems.spawn(e.sprite.x, e.sprite.y, 1)
+        spawnEnemyDrop(pickups, e.sprite.x, e.sprite.y)
         screenShake.trigger(1.5)
         e.deactivate()
       }

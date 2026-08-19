@@ -38,15 +38,15 @@ const VULCAN_PATTERNS: [number, number][][] = [
 ]
 
 const PLASMA_PATTERNS: [number, number][][] = [
-  [[-0.30, -0.95], [0, -1], [0.30, -0.95]],
-  [[-0.38, -0.92], [-0.13, -0.99], [0.13, -0.99], [0.38, -0.92]],
-  [[-0.46, -0.89], [-0.23, -0.97], [0, -1], [0.23, -0.97], [0.46, -0.89]],
-  [[-0.50, -0.87], [-0.30, -0.95], [-0.10, -0.995], [0.10, -0.995], [0.30, -0.95], [0.50, -0.87]],
-  [[-0.54, -0.84], [-0.36, -0.93], [-0.18, -0.98], [0, -1], [0.18, -0.98], [0.36, -0.93], [0.54, -0.84]],
+  [[-0.55, -0.84], [-0.28, -0.96], [0, -1], [0.28, -0.96], [0.55, -0.84]],
+  [[-0.60, -0.80], [-0.30, -0.95], [0, -1], [0.30, -0.95], [0.60, -0.80]],
+  [[-0.62, -0.78], [-0.42, -0.91], [-0.21, -0.98], [0, -1], [0.21, -0.98], [0.42, -0.91], [0.62, -0.78]],
+  [[-0.66, -0.75], [-0.44, -0.90], [-0.22, -0.98], [0, -1], [0.22, -0.98], [0.44, -0.90], [0.66, -0.75]],
+  [[-0.70, -0.71], [-0.52, -0.85], [-0.35, -0.94], [-0.18, -0.98], [0, -1], [0.18, -0.98], [0.35, -0.94], [0.52, -0.85], [0.70, -0.71]],
 ]
 
 const VULCAN_FIRE_RATE = [0.14, 0.13, 0.12, 0.10, 0.08]
-const PLASMA_FIRE_RATE = [0.28, 0.27, 0.25, 0.23, 0.21]
+const PLASMA_FIRE_RATE = [0.34, 0.32, 0.30, 0.27, 0.24]
 
 export class Player {
   sprite: Sprite
@@ -69,6 +69,7 @@ export class Player {
     container: Container,
     texture: Texture,
     private bulletPool: BulletPool,
+    private plasmaTexture: Texture,
     private stageW: number,
     private stageH: number,
   ) {
@@ -235,9 +236,10 @@ export class Player {
           ox, oy,
           nx * (plasma ? BULLET_SPEED * 0.82 : BULLET_SPEED),
           ny * (plasma ? BULLET_SPEED * 0.82 : BULLET_SPEED),
-          plasma ? 0.62 : 1,
-          plasma ? 0xff55ee : 0xffffff,
-          plasma ? 1.35 : 1,
+          plasma ? 0.55 : 1,
+          0xffffff,
+          plasma ? 1.1 : 1,
+          plasma ? this.plasmaTexture : undefined,
         )
       }
       audioSystem.playShoot(power)

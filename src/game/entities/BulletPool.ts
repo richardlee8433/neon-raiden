@@ -13,7 +13,7 @@ export interface Bullet {
 export class BulletPool {
   private pool: Bullet[] = []
 
-  constructor(container: Container, texture: Texture, size: number) {
+  constructor(container: Container, private texture: Texture, size: number) {
     for (let i = 0; i < size; i++) {
       const sprite = new Sprite(texture)
       sprite.anchor.set(0.5)
@@ -25,7 +25,7 @@ export class BulletPool {
 
   acquire(
     x: number, y: number, vx: number, vy: number,
-    damage = 1, tint = 0xffffff, scale = 1,
+    damage = 1, tint = 0xffffff, scale = 1, texture?: Texture,
   ): Bullet | null {
     const b = this.pool.find((b) => !b.active)
     if (!b) return null
@@ -38,6 +38,7 @@ export class BulletPool {
     b.sprite.y = y
     b.sprite.tint = tint
     b.sprite.scale.set(scale)
+    b.sprite.texture = texture ?? this.texture
     b.sprite.visible = true
     return b
   }
