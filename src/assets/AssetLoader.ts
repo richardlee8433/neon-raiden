@@ -10,6 +10,7 @@ export interface GameAssets {
   pickupBomb: Texture
   pickupLife: Texture
   pickupLaser: Texture
+  gem: Texture
   explosionFrames: Texture[]
 }
 
@@ -33,10 +34,11 @@ export async function loadAssets(): Promise<GameAssets> {
     './assets/kenney/Tiles/tile_0008.png',   // enemy bullet
     './assets/kenney/Tiles/tile_0010.png',   // boss bullet (larger)
     './assets/kenney/Ships/ship_0015.png',   // boss ship
-    './assets/kenney/Tiles/tile_0030.png',   // pickup power/bullet (yellow bolt)
-    './assets/kenney/Tiles/tile_0025.png',   // pickup bomb
-    './assets/kenney/Tiles/tile_0024.png',   // pickup life (red cross)
-    './assets/kenney/Tiles/tile_0029.png',   // pickup laser (green)
+    './assets/pickups/pickup-power.png',
+    './assets/pickups/pickup-bomb.png',
+    './assets/pickups/pickup-life.png',
+    './assets/pickups/pickup-laser.png',
+    './assets/pickups/gem-gold.png',
     ...EXPLOSION_TILES.map((i) =>
       `./assets/kenney/Tiles/tile_${String(i).padStart(4, '0')}.png`,
     ),
@@ -54,6 +56,7 @@ export async function loadAssets(): Promise<GameAssets> {
     pickupBomb:      textures[6],
     pickupLife:      textures[7],
     pickupLaser:     textures[8],
-    explosionFrames: textures.slice(9),
+    gem:             textures[9],
+    explosionFrames: textures.slice(10),
   }
 }

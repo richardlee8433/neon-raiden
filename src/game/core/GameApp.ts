@@ -16,7 +16,7 @@ import { hitstop } from '../fx/Hitstop'
 import { BulletTrail } from '../fx/BulletTrail'
 import { LaserBeam } from '../fx/LaserBeam'
 import { Shockwave } from '../fx/Shockwave'
-import { makeGlowBulletTexture, makeGemTexture } from '../fx/GlowTexture'
+import { makeGlowBulletTexture } from '../fx/GlowTexture'
 import { GemPool } from '../entities/Gem'
 import { musicSystem } from '../systems/MusicSystem'
 import { EngineExhaust } from '../fx/EngineExhaust'
@@ -139,7 +139,7 @@ export class GameApp {
     this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
     this.boss      = new Boss(this.gameLayer)
     this.pickups   = new PickupPool(this.gameLayer, assets.pickupPower, assets.pickupBomb, assets.pickupLife, assets.pickupLaser)
-    this.gems      = new GemPool(this.gameLayer, makeGemTexture(this.app.renderer, 7 * SPRITE_SCALE))
+    this.gems      = new GemPool(this.gameLayer, assets.gem)
     this.laser      = new LaserBeam(this.fxLayer, H)
     this.explosions = new ExplosionPool(this.fxLayer, assets.explosionFrames)
     this.bombEffect = new BombEffect(this.fxLayer, W, H)

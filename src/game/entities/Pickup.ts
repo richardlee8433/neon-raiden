@@ -28,7 +28,9 @@ export class PickupPool {
     for (let i = 0; i < size; i++) {
       const sprite = new Sprite(texPower)
       sprite.anchor.set(0.5)
-      sprite.scale.set(1.8 * SPRITE_SCALE)
+      // New pickup art uses a 48 px canvas rather than Kenney's 16 px tiles.
+      // Keep the on-screen footprint readable without tripling its size.
+      sprite.scale.set(0.8 * SPRITE_SCALE)
       sprite.visible = false
       container.addChild(sprite)
       this.pool.push({ sprite, active: false, type: 'power' })
