@@ -12,6 +12,7 @@ export class Enemy {
   hitbox: Rectangle
   active = false
   hp = 1
+  maxHp = 1
   scoreValue = 100
 
   private def!: EnemyDef
@@ -25,17 +26,28 @@ export class Enemy {
   private laserDuration = 0
   private spiralAngle = 0
   private hitFlash = 0
+  private hitBurst = 0
+  private hitAngle = 0
   private fireTimer = 0
+  private engineG: Graphics
+  private damageG: Graphics
+  private hitG: Graphics
   // Committed dive heading (unit vector), locked once instead of re-aimed
   private aimVx = 0
   private aimVy = 1
   private diveLocked = false
 
   constructor(private container: Container, texture: Texture) {
+    this.engineG = new Graphics()
+    this.damageG = new Graphics()
+    this.hitG = new Graphics()
     this.sprite = new Sprite(texture)
     this.sprite.anchor.set(0.5)
     this.sprite.visible = false
-    container.addChild(this.sprite)
+    this.engineG.visible = false
+    this.damageG.visible = false
+    this.hitG.visible = false
+    container.addChild(this.engineG, this.sprite, this.damageG, this.hitG)
     this.hitbox = new Rectangle(-12, -12, 24, 24)
   }
 
@@ -52,6 +64,7 @@ export class Enemy {
     this.def = def
     this.path = path
     this.hp = def.hp
+    this.maxHp = def.hp
     this.scoreValue = def.scoreValue
     this.age = 0
     this.playerX = playerX
@@ -76,6 +89,10 @@ export class Enemy {
     this.sprite.alpha = 1
     this.sprite.tint = 0xffffff
     this.hitFlash = 0
+    this.hitBurst = 0
+    this.engineG.visible = true
+    this.damageG.visible = true
+    this.hitG.visible = true
     this.sprite.visible = true
     this.active = true
 
@@ -98,6 +115,12 @@ export class Enemy {
   deactivate() {
     this.active = false
     this.sprite.visible = false
+    this.engineG.clear()
+    this.damageG.clear()
+    this.hitG.clear()
+    this.engineG.visible = false
+    this.damageG.visible = false
+    this.hitG.visible = false
     this.laserDuration = 0
     this.laserG?.clear()
   }
@@ -111,10 +134,14 @@ export class Enemy {
     )
   }
 
-  /** Red flash on non-lethal hits so damage reads instantly. */
+  /** Flash, sparks and a brief impact star make non-lethal hits read instantly. */
   flash() {
-    this.hitFlash = 0.07
-    this.sprite.tint = 0xff5555
+    if (this.hitFlash <= 0) {
+      this.hitBurst = 0.13
+      this.hitAngle = Math.random() * Math.PI * 2
+    }
+    this.hitFlash = 0.09
+    this.sprite.tint = 0xff684f
   }
 
   update(dt: number, bulletPool: BulletPool, stageH: number, playerX: number, playerY = 512) {
@@ -123,8 +150,9 @@ export class Enemy {
 
     if (this.hitFlash > 0) {
       this.hitFlash -= dt
-      if (this.hitFlash <= 0) this.sprite.tint = 0xffffff
+      if (this.hitFlash <= 0) this.sprite.tint = this.hp <= this.maxHp * 0.5 ? 0xd9b8a3 : 0xffffff
     }
+    this.hitBurst = Math.max(0, this.hitBurst - dt)
     this.playerX = playerX
     const spd = this.def.speed
 
@@ -185,6 +213,8 @@ export class Enemy {
       this.sprite.x < PLAYFIELD_LEFT - 120 || this.sprite.x > PLAYFIELD_RIGHT + 120 ||
       this.age > 30
     ) { this.deactivate(); return }
+
+    this.drawVisualFx()
 
     // Red laser beam (gunship only)
     if (this.def.usesLaser && this.laserG) {
@@ -267,5 +297,53 @@ export class Enemy {
     g.moveTo(x, y).lineTo(x, stageH).stroke({ color: 0xff6633, width: 5,  alpha: 0.60 * pulse })
     g.moveTo(x, y).lineTo(x, stageH).stroke({ color: 0xffddcc, width: 2,  alpha: 0.95 * pulse })
     g.circle(x, y + 4, 8 + 3 * pulse).stroke({ color: 0xff4422, width: 1.5, alpha: 0.5 })
+  }
+
+  private drawVisualFx() {
+    const x = this.sprite.x
+    const y = this.sprite.y
+    const pulse = 0.72 + 0.28 * Math.sin(this.age * 18 + x * 0.03)
+    const color = this.def.engineColor ?? 0x55ddff
+    const count = this.def.engineCount ?? 1
+    const tailY = y - this.sprite.height * 0.43
+    const spread = this.sprite.width * 0.16
+
+    this.engineG.clear()
+    for (let i = 0; i < count; i++) {
+      const offset = count === 1 ? 0 : (i - (count - 1) / 2) * spread
+      this.engineG.ellipse(x + offset, tailY - 3 * pulse, 5.5, 10 + 4 * pulse)
+        .fill({ color, alpha: 0.12 * pulse })
+      this.engineG.ellipse(x + offset, tailY, 2.3, 5 + 2.5 * pulse)
+        .fill({ color: 0xffffff, alpha: 0.68 * pulse })
+    }
+
+    this.damageG.clear()
+    if (this.hp <= this.maxHp * 0.5) {
+      const flicker = 0.55 + 0.45 * Math.sin(this.age * 29)
+      const dx = this.sprite.width * 0.14
+      const dy = this.sprite.height * 0.06
+      this.damageG.circle(x + dx, y + dy, 7 + 2 * flicker)
+        .fill({ color: 0x080604, alpha: 0.42 })
+      this.damageG.circle(x + dx, y + dy, 2.2 + flicker)
+        .fill({ color: 0xff7a18, alpha: 0.74 * flicker })
+      this.damageG.moveTo(x + dx, y + dy - 3)
+        .lineTo(x + dx + 4 * Math.sin(this.age * 23), y + dy - 12 - 5 * flicker)
+        .stroke({ color: 0xffd36a, width: 1.2, alpha: 0.65 * flicker })
+    }
+
+    this.hitG.clear()
+    if (this.hitBurst > 0) {
+      const p = 1 - this.hitBurst / 0.13
+      const radius = 5 + p * 14
+      for (let i = 0; i < 6; i++) {
+        const a = this.hitAngle + i * Math.PI / 3
+        const inner = radius * 0.32
+        this.hitG.moveTo(x + Math.cos(a) * inner, y + Math.sin(a) * inner)
+          .lineTo(x + Math.cos(a) * radius, y + Math.sin(a) * radius)
+          .stroke({ color: i % 2 ? 0xff8a36 : 0xffffff, width: 1.8, alpha: 1 - p })
+      }
+      this.hitG.circle(x, y, 3 + p * 4)
+        .fill({ color: 0xffffff, alpha: (1 - p) * 0.85 })
+    }
   }
 }

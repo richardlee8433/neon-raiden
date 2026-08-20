@@ -12,6 +12,7 @@ import { audioSystem } from './AudioSystem'
 import { screenShake } from '../fx/ScreenShake'
 import { hitstop } from '../fx/Hitstop'
 import { SPRITE_SCALE } from '../config'
+import { spawnEnemyDrop } from './DropSystem'
 
 function intersects(a: Rectangle, b: Rectangle): boolean {
   return (
@@ -25,12 +26,6 @@ function intersects(a: Rectangle, b: Rectangle): boolean {
 // Scales with the sprites so grazing feels identical on both layouts.
 const GRAZE_RADIUS = 22 * SPRITE_SCALE
 const BULLET_R = 3 * SPRITE_SCALE   // half-size of a bullet's collision box
-
-const ENEMY_ONEUP_CHANCE  = 0.02   // 2%
-const ENEMY_BOMB_CHANCE   = 0.08   // 6%
-const ENEMY_LASER_CHANCE  = 0.16   // 8%
-const ENEMY_PLASMA_CHANCE = 0.24   // 8%
-const ENEMY_DROP_CHANCE   = 0.38   // 14% — Vulcan (cumulative)
 
 export class CollisionSystem {
   check(
@@ -64,12 +59,7 @@ export class CollisionSystem {
           audioSystem.playExplosion('small')
           const { awarded, mult } = gameStore.getState().addKillScore(enemy.scoreValue)
           floats.spawn(enemy.sprite.x, enemy.sprite.y - 10, `+${awarded}`, multColor(mult))
-          const roll = Math.random()
-          if (roll < ENEMY_ONEUP_CHANCE)            pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'oneup')
-          else if (roll < ENEMY_BOMB_CHANCE)        pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'bomb')
-          else if (roll < ENEMY_LASER_CHANCE)       pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'laser')
-          else if (roll < ENEMY_PLASMA_CHANCE)      pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'plasma')
-          else if (roll < ENEMY_DROP_CHANCE)        pickups.spawn(enemy.sprite.x, enemy.sprite.y, 'power')
+          spawnEnemyDrop(pickups, enemy.sprite.x, enemy.sprite.y)
           gems.spawn(enemy.sprite.x, enemy.sprite.y, Math.random() < 0.35 ? 2 : 1)
           enemy.deactivate()
         }

@@ -24,6 +24,7 @@ import { FloatingTextPool, multColor } from '../fx/FloatingText'
 import { STAGES } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
 import { audioSystem } from '../systems/AudioSystem'
+import { spawnEnemyDrop } from '../systems/DropSystem'
 
 import {
   STAGE_W as W, STAGE_H as H, SPRITE_SCALE,
@@ -136,7 +137,10 @@ export class GameApp {
     this.enemyBullets  = new BulletPool(this.bulletLayer, enemyBulletTex, 1000)
     this.bossBullets   = new BulletPool(this.bulletLayer, bossBulletTex,  200)
 
-    this.player    = new Player(this.gameLayer, assets.playerShip, this.playerBullets, W, H)
+    const plasmaBulletTex = makeGlowBulletTexture(this.app.renderer, 0xff55ee, 7 * SPRITE_SCALE)
+    this.player    = new Player(
+      this.gameLayer, assets.playerShip, this.playerBullets, plasmaBulletTex, W, H,
+    )
     this.boss      = new Boss(this.gameLayer)
     this.pickups   = new PickupPool(
       this.gameLayer,
@@ -308,6 +312,7 @@ export class GameApp {
       this.explosions,
       this.gems,
       this.floats,
+      this.pickups,
     )
 
     // Enemy laser hits on player (registers a hit; death resolves below)
@@ -388,7 +393,10 @@ export class GameApp {
         const { awarded, mult } = gameStore.getState().addKillScore(e.scoreValue)
         this.floats.spawn(e.sprite.x, e.sprite.y - 10, `+${awarded}`, multColor(mult))
         this.gems.spawn(e.sprite.x, e.sprite.y, 1)
+        spawnEnemyDrop(this.pickups, e.sprite.x, e.sprite.y)
         e.deactivate()
+      } else {
+        e.flash()
       }
     }
     if (this.boss.active) {
