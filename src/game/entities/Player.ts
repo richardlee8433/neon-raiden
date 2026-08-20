@@ -240,7 +240,7 @@ export class Player {
           0xffffff,
           plasma ? 1.1 : 1,
           plasma ? this.plasmaTexture : undefined,
-          !plasma,
+          plasma,
         )
       }
       audioSystem.playShoot(power)
