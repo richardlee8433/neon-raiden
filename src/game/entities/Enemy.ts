@@ -12,7 +12,6 @@ export class Enemy {
   hitbox: Rectangle
   active = false
   hp = 1
-  maxHp = 1
   scoreValue = 100
 
   private def!: EnemyDef
@@ -30,7 +29,6 @@ export class Enemy {
   private hitAngle = 0
   private fireTimer = 0
   private engineG: Graphics
-  private damageG: Graphics
   private hitG: Graphics
   // Committed dive heading (unit vector), locked once instead of re-aimed
   private aimVx = 0
@@ -39,15 +37,13 @@ export class Enemy {
 
   constructor(private container: Container, texture: Texture) {
     this.engineG = new Graphics()
-    this.damageG = new Graphics()
     this.hitG = new Graphics()
     this.sprite = new Sprite(texture)
     this.sprite.anchor.set(0.5)
     this.sprite.visible = false
     this.engineG.visible = false
-    this.damageG.visible = false
     this.hitG.visible = false
-    container.addChild(this.engineG, this.sprite, this.damageG, this.hitG)
+    container.addChild(this.engineG, this.sprite, this.hitG)
     this.hitbox = new Rectangle(-12, -12, 24, 24)
   }
 
@@ -64,7 +60,6 @@ export class Enemy {
     this.def = def
     this.path = path
     this.hp = def.hp
-    this.maxHp = def.hp
     this.scoreValue = def.scoreValue
     this.age = 0
     this.playerX = playerX
@@ -91,7 +86,6 @@ export class Enemy {
     this.hitFlash = 0
     this.hitBurst = 0
     this.engineG.visible = true
-    this.damageG.visible = true
     this.hitG.visible = true
     this.sprite.visible = true
     this.active = true
@@ -116,10 +110,8 @@ export class Enemy {
     this.active = false
     this.sprite.visible = false
     this.engineG.clear()
-    this.damageG.clear()
     this.hitG.clear()
     this.engineG.visible = false
-    this.damageG.visible = false
     this.hitG.visible = false
     this.laserDuration = 0
     this.laserG?.clear()
@@ -150,7 +142,7 @@ export class Enemy {
 
     if (this.hitFlash > 0) {
       this.hitFlash -= dt
-      if (this.hitFlash <= 0) this.sprite.tint = this.hp <= this.maxHp * 0.5 ? 0xd9b8a3 : 0xffffff
+      if (this.hitFlash <= 0) this.sprite.tint = 0xffffff
     }
     this.hitBurst = Math.max(0, this.hitBurst - dt)
     this.playerX = playerX
@@ -315,20 +307,6 @@ export class Enemy {
         .fill({ color, alpha: 0.12 * pulse })
       this.engineG.ellipse(x + offset, tailY, 2.3, 5 + 2.5 * pulse)
         .fill({ color: 0xffffff, alpha: 0.68 * pulse })
-    }
-
-    this.damageG.clear()
-    if (this.hp <= this.maxHp * 0.5) {
-      const flicker = 0.55 + 0.45 * Math.sin(this.age * 29)
-      const dx = this.sprite.width * 0.14
-      const dy = this.sprite.height * 0.06
-      this.damageG.circle(x + dx, y + dy, 7 + 2 * flicker)
-        .fill({ color: 0x080604, alpha: 0.42 })
-      this.damageG.circle(x + dx, y + dy, 2.2 + flicker)
-        .fill({ color: 0xff7a18, alpha: 0.74 * flicker })
-      this.damageG.moveTo(x + dx, y + dy - 3)
-        .lineTo(x + dx + 4 * Math.sin(this.age * 23), y + dy - 12 - 5 * flicker)
-        .stroke({ color: 0xffd36a, width: 1.2, alpha: 0.65 * flicker })
     }
 
     this.hitG.clear()

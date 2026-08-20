@@ -88,7 +88,11 @@ export class LaserBeam {
 
     if (boss?.active) {
       if (Math.abs(boss.sprite.x - playerX) < boss.sprite.width * 0.5 + 4) {
-        const died = boss.hit(dmg * BOSS_DMG_MULT)
+        const died = boss.hit(
+          dmg * BOSS_DMG_MULT,
+          playerX,
+          boss.sprite.y + boss.sprite.height * 0.2,
+        )
         if (died) {
           screenShake.trigger(5)
           gems.spawn(boss.sprite.x, boss.sprite.y, 16)

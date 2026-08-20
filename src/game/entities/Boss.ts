@@ -1,4 +1,4 @@
-import { Container, Sprite, Texture, Rectangle } from 'pixi.js'
+import { Container, Graphics, Sprite, Texture, Rectangle } from 'pixi.js'
 import { BulletPool } from './BulletPool'
 import { BossConfig } from '../data/stages'
 import { gameStore } from '../../store/gameStore'
@@ -38,12 +38,28 @@ export class Boss {
   private targetY = TARGET_Y
   private enterSpeed = 80
   private cfg!: BossConfig
+  private damageG: Graphics
+  private impactG: Graphics
+  private impactTimer = 0
+  private impactCooldown = 0
+  private impactX = 0
+  private impactY = 0
+  private impactAngle = 0
+  private shakeTimer = 0
+  private shakeStrength = 0
+  private visualOffsetX = 0
+  private visualOffsetY = 0
+  private visualRotation = 0
 
   constructor(private container: Container) {
     this.sprite = new Sprite()
+    this.damageG = new Graphics()
+    this.impactG = new Graphics()
     this.sprite.anchor.set(0.5)
     this.sprite.visible = false
-    container.addChild(this.sprite)
+    this.damageG.visible = false
+    this.impactG.visible = false
+    container.addChild(this.sprite, this.damageG, this.impactG)
   }
 
   async spawn(cfg: BossConfig, bossId = 1) {
@@ -70,6 +86,17 @@ export class Boss {
     this.dyingTimer = 0
     this.chainTimer = 0
     this.finaleDone = false
+    this.impactTimer = 0
+    this.impactCooldown = 0
+    this.shakeTimer = 0
+    this.shakeStrength = 0
+    this.visualOffsetX = 0
+    this.visualOffsetY = 0
+    this.visualRotation = 0
+    this.damageG.clear()
+    this.impactG.clear()
+    this.damageG.visible = true
+    this.impactG.visible = true
     const k = (cfg.displayW * SPRITE_SCALE) / tex.width
     this.sprite.scale.set(k, cfg.flipY ? -k : k)
     // Tall hulls would hang off the top edge at the default hover height.
@@ -93,11 +120,20 @@ export class Boss {
     return new Rectangle(this.sprite.x - hw, this.sprite.y - hh, hw * 2, hh * 2)
   }
 
-  hit(damage = 1): boolean {
+  hit(damage = 1, impactX = this.sprite.x, impactY = this.sprite.y): boolean {
     if (!this.active || this.state === 'dying') return false
     this.hp -= damage
     this.flashTimer = 0.1
     this.sprite.tint = 0xff4444
+    this.shakeTimer = Math.max(this.shakeTimer, 0.1)
+    this.shakeStrength = Math.max(this.shakeStrength, Math.min(5.5, 2.5 + damage * 0.45))
+    if (this.impactCooldown <= 0) {
+      this.impactTimer = 0.14
+      this.impactCooldown = 0.065
+      this.impactX = impactX
+      this.impactY = impactY
+      this.impactAngle = Math.random() * Math.PI * 2
+    }
 
     const newPhase: 1 | 2 | 3 =
       this.hp > this.maxHp * 0.67 ? 1 :
@@ -105,6 +141,8 @@ export class Boss {
     if (newPhase !== this.phase) {
       this.phase = newPhase
       this.flashTimer = 0.4
+      this.shakeTimer = 0.3
+      this.shakeStrength = 8
     }
     gameStore.getState().setBossHp(Math.max(0, this.hp), this.maxHp)
 
@@ -121,11 +159,15 @@ export class Boss {
     explosions: ExplosionPool, flash: BombEffect,
   ) {
     if (!this.active) return
+    this.removeVisualShake()
     this.age += dt
+    this.impactTimer = Math.max(0, this.impactTimer - dt)
+    this.impactCooldown = Math.max(0, this.impactCooldown - dt)
+    this.shakeTimer = Math.max(0, this.shakeTimer - dt)
 
     if (this.flashTimer > 0) {
       this.flashTimer -= dt
-      if (this.flashTimer <= 0) this.sprite.tint = 0xffffff
+      if (this.flashTimer <= 0) this.sprite.tint = this.damageTint()
     }
 
     if (this.state === 'entering') {
@@ -134,6 +176,7 @@ export class Boss {
         this.sprite.y = this.targetY
         this.state = 'fighting'
       }
+      this.finishVisualFrame()
       return
     }
 
@@ -141,20 +184,25 @@ export class Boss {
     if (this.state === 'dying') {
       this.dyingTimer += dt
       if (!this.finaleDone) {
-        this.sprite.x += (Math.random() - 0.5) * 6
+        this.shakeTimer = 0.1
+        this.shakeStrength = 7
         this.chainTimer -= dt
         if (this.chainTimer <= 0) {
-          this.chainTimer = 0.12
+          this.chainTimer = 0.1
           const ox = (Math.random() - 0.5) * this.sprite.width * 0.8
           const oy = (Math.random() - 0.5) * this.sprite.height * 0.8
-          explosions.spawn(this.sprite.x + ox, this.sprite.y + oy, 1.2 + Math.random())
+          explosions.spawn(this.sprite.x + ox, this.sprite.y + oy, 1.8 + Math.random() * 1.4)
           audioSystem.playExplosion('small')
-          screenShake.trigger(2)
+          screenShake.trigger(2.5)
         }
         if (this.dyingTimer >= 1.5) {
           this.finaleDone = true
           this.sprite.visible = false
-          explosions.spawn(this.sprite.x, this.sprite.y, 5)
+          this.damageG.clear()
+          this.impactG.clear()
+          explosions.spawn(this.sprite.x - this.sprite.width * 0.2, this.sprite.y, 3.6)
+          explosions.spawn(this.sprite.x + this.sprite.width * 0.2, this.sprite.y, 3.6)
+          explosions.spawn(this.sprite.x, this.sprite.y, 6)
           flash.trigger()
           hitstop.trigger(0.35)
           screenShake.trigger(12)
@@ -166,6 +214,7 @@ export class Boss {
         gameStore.getState().addScore(this.cfg.scoreValue)
         gameStore.getState().setPhase('stageclear')
       }
+      this.finishVisualFrame()
       return
     }
 
@@ -190,6 +239,106 @@ export class Boss {
       this.fire(playerX, playerY, bossBullets)
       this.fireTimer = (RATES[this.bossId] ?? RATES[1])[this.phase] * this.cfg.fireRateMult
     }
+    this.finishVisualFrame()
+  }
+
+  private removeVisualShake() {
+    this.sprite.x -= this.visualOffsetX
+    this.sprite.y -= this.visualOffsetY
+    this.sprite.rotation -= this.visualRotation
+    this.visualOffsetX = 0
+    this.visualOffsetY = 0
+    this.visualRotation = 0
+  }
+
+  private finishVisualFrame() {
+    if (!this.sprite.visible) {
+      this.damageG.clear()
+      this.impactG.clear()
+      return
+    }
+    if (this.shakeTimer > 0) {
+      const falloff = Math.min(1, this.shakeTimer / 0.1)
+      this.visualOffsetX = (Math.random() * 2 - 1) * this.shakeStrength * falloff
+      this.visualOffsetY = (Math.random() * 2 - 1) * this.shakeStrength * 0.45 * falloff
+      this.visualRotation = (Math.random() * 2 - 1) * 0.018 * falloff
+      this.sprite.x += this.visualOffsetX
+      this.sprite.y += this.visualOffsetY
+      this.sprite.rotation += this.visualRotation
+    } else {
+      this.shakeStrength = 0
+    }
+    this.drawDamageFx()
+    this.drawImpactFx()
+  }
+
+  private damageTint(): number {
+    const ratio = this.hp / this.maxHp
+    if (ratio <= 0.33) return 0xd7a48d
+    if (ratio <= 0.67) return 0xf0d5c5
+    return 0xffffff
+  }
+
+  private drawDamageFx() {
+    this.damageG.clear()
+    const ratio = this.hp / this.maxHp
+    if (ratio > 0.67 || this.state === 'entering') return
+
+    const points: Record<number, Array<[number, number]>> = {
+      1: [[-0.2, 0.04], [0.2, 0.1], [-0.04, -0.18], [0.08, 0.24]],
+      2: [[-0.24, 0.04], [0.23, 0.1], [0, -0.18], [-0.08, 0.23]],
+      3: [[-0.22, -0.04], [0.24, 0.1], [-0.08, 0.2], [0.08, -0.2]],
+    }
+    const locations = points[this.bossId] ?? points[1]
+    const count = ratio <= 0.33 ? 4 : 2
+    const flicker = 0.6 + 0.4 * Math.sin(this.age * 27)
+
+    for (let i = 0; i < count; i++) {
+      const [nx, ny] = locations[i]
+      const x = this.sprite.x + this.sprite.width * nx
+      const y = this.sprite.y + this.sprite.height * ny
+      const smokeRise = (this.age * (15 + i * 2) + i * 8) % 24
+
+      this.damageG.circle(x, y, 10 + i * 1.5)
+        .fill({ color: 0x080604, alpha: 0.48 })
+      this.damageG.circle(x, y - smokeRise, 7 + smokeRise * 0.16)
+        .fill({ color: 0x24252b, alpha: 0.34 * (1 - smokeRise / 28) })
+      this.damageG.circle(x, y + 1, 4 + 2 * flicker)
+        .fill({ color: 0xff5818, alpha: 0.78 * flicker })
+      this.damageG.circle(x, y, 1.8 + flicker)
+        .fill({ color: 0xfff2a6, alpha: 0.92 * flicker })
+
+      if (Math.sin(this.age * 19 + i * 2.4) > 0.35) {
+        this.damageG.moveTo(x, y - 2)
+          .lineTo(x + Math.sin(this.age * 31 + i) * 10, y - 16 - 8 * flicker)
+          .stroke({ color: 0xffc24a, width: 1.7, alpha: 0.75 * flicker })
+      }
+    }
+  }
+
+  private drawImpactFx() {
+    this.impactG.clear()
+    if (this.impactTimer <= 0) return
+    const progress = 1 - this.impactTimer / 0.14
+    const fade = 1 - progress
+    const radius = 8 + progress * 24
+    const color = this.bossId === 2 ? 0x64ddff : this.bossId === 3 ? 0xff8a32 : 0xffdf66
+
+    this.impactG.circle(this.impactX, this.impactY, radius * 0.55)
+      .stroke({ color, width: 2.4 * fade, alpha: 0.8 * fade })
+    for (let i = 0; i < 8; i++) {
+      const a = this.impactAngle + i * Math.PI / 4
+      const inner = radius * 0.25
+      this.impactG.moveTo(
+        this.impactX + Math.cos(a) * inner,
+        this.impactY + Math.sin(a) * inner,
+      ).lineTo(
+        this.impactX + Math.cos(a) * radius,
+        this.impactY + Math.sin(a) * radius,
+      ).stroke({ color: i % 2 ? color : 0xffffff, width: 2.2, alpha: fade })
+    }
+    this.impactG.circle(this.impactX, this.impactY, 5 + progress * 4)
+      .fill({ color: 0xffffff, alpha: 0.88 * fade })
   }
 
   private fire(playerX: number, playerY: number, pool: BulletPool) {

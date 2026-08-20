@@ -69,8 +69,10 @@ export class CollisionSystem {
       // ── Player bullets vs boss ─────────────────────────────────────────
       if (boss?.active) {
         if (intersects(br, boss.hitboxWorld)) {
+          const impactX = bullet.sprite.x
+          const impactY = bullet.sprite.y
           playerBullets.release(bullet)
-          const died = boss.hit(bullet.damage)
+          const died = boss.hit(bullet.damage, impactX, impactY)
           screenShake.trigger(died ? 5 : 3)
           audioSystem.playBossHurt()
           if (died) {
