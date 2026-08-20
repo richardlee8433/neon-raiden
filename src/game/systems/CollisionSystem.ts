@@ -1,5 +1,5 @@
 import { Rectangle } from 'pixi.js'
-import { BulletPool } from '../entities/BulletPool'
+import { Bullet, BulletPool } from '../entities/BulletPool'
 import { Enemy } from '../entities/Enemy'
 import { Player } from '../entities/Player'
 import { Boss } from '../entities/Boss'
@@ -26,6 +26,24 @@ function intersects(a: Rectangle, b: Rectangle): boolean {
 // Scales with the sprites so grazing feels identical on both layouts.
 const GRAZE_RADIUS = 22 * SPRITE_SCALE
 const BULLET_R = 3 * SPRITE_SCALE   // half-size of a bullet's collision box
+// Equal circular cores at this separation overlap by roughly 80% of their
+// area. Swept movement keeps fast opposing shots from tunnelling past it.
+const VULCAN_CANCEL_DISTANCE = BULLET_R * 0.35
+const VULCAN_CANCEL_CHANCE = 0.60
+
+function sweptBulletDistanceSq(a: Bullet, b: Bullet): number {
+  const startX = a.prevX - b.prevX
+  const startY = a.prevY - b.prevY
+  const travelX = (a.sprite.x - b.sprite.x) - startX
+  const travelY = (a.sprite.y - b.sprite.y) - startY
+  const travelSq = travelX * travelX + travelY * travelY
+  const t = travelSq === 0 ? 0 : Math.max(0, Math.min(1,
+    -(startX * travelX + startY * travelY) / travelSq,
+  ))
+  const closestX = startX + travelX * t
+  const closestY = startY + travelY * t
+  return closestX * closestX + closestY * closestY
+}
 
 export class CollisionSystem {
   check(
@@ -85,6 +103,31 @@ export class CollisionSystem {
             gems.magnetizeAll()
           }
         }
+      }
+    }
+
+    // ── Vulcan bullets vs hostile energy rounds ─────────────────────────
+    // A direct core-on-core intercept gives the weakest weapon a distinctive
+    // defensive role without granting Plasma's broad spread the same shield.
+    const cancelDistanceSq = VULCAN_CANCEL_DISTANCE * VULCAN_CANCEL_DISTANCE
+    for (const bullet of playerBullets.active) {
+      if (!bullet.cancelsHostile) continue
+      let cancelled = false
+
+      for (const hostilePool of [enemyBullets, bossBullets]) {
+        for (const hostile of hostilePool.active) {
+          if (sweptBulletDistanceSq(bullet, hostile) > cancelDistanceSq) continue
+          if (Math.random() >= VULCAN_CANCEL_CHANCE) continue
+
+          const impactX = (bullet.sprite.x + hostile.sprite.x) * 0.5
+          const impactY = (bullet.sprite.y + hostile.sprite.y) * 0.5
+          playerBullets.release(bullet)
+          hostilePool.release(hostile)
+          explosions.spawn(impactX, impactY, 0.45)
+          cancelled = true
+          break
+        }
+        if (cancelled) break
       }
     }
 

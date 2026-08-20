@@ -3,11 +3,14 @@ import { PLAYFIELD_LEFT, PLAYFIELD_RIGHT } from '../config'
 
 export interface Bullet {
   sprite: Sprite
+  prevX: number
+  prevY: number
   vx: number
   vy: number
   active: boolean
   grazed: boolean  // already awarded a graze; reset on acquire
   damage: number
+  cancelsHostile: boolean
 }
 
 export class BulletPool {
@@ -19,13 +22,17 @@ export class BulletPool {
       sprite.anchor.set(0.5)
       sprite.visible = false
       container.addChild(sprite)
-      this.pool.push({ sprite, vx: 0, vy: 0, active: false, grazed: false, damage: 1 })
+      this.pool.push({
+        sprite, prevX: 0, prevY: 0, vx: 0, vy: 0,
+        active: false, grazed: false, damage: 1, cancelsHostile: false,
+      })
     }
   }
 
   acquire(
     x: number, y: number, vx: number, vy: number,
     damage = 1, tint = 0xffffff, scale = 1, texture?: Texture,
+    cancelsHostile = false,
   ): Bullet | null {
     const b = this.pool.find((b) => !b.active)
     if (!b) return null
@@ -34,6 +41,9 @@ export class BulletPool {
     b.vx = vx
     b.vy = vy
     b.damage = damage
+    b.cancelsHostile = cancelsHostile
+    b.prevX = x
+    b.prevY = y
     b.sprite.x = x
     b.sprite.y = y
     b.sprite.tint = tint
@@ -59,6 +69,8 @@ export class BulletPool {
   update(dt: number, _stageW: number, stageH: number) {
     for (const b of this.pool) {
       if (!b.active) continue
+      b.prevX = b.sprite.x
+      b.prevY = b.sprite.y
       b.sprite.x += b.vx * dt
       b.sprite.y += b.vy * dt
       if (
