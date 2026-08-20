@@ -10,8 +10,11 @@ import { PickupPool } from '../entities/Pickup'
 import { spawnEnemyDrop } from '../systems/DropSystem'
 
 const DMG_PER_SEC = 30
-// Bosses resist the beam, otherwise parking on one melts it in seconds
+// Bosses resist the beam, while laser power restores its single-target scaling.
+// Power 1–5 deals roughly 8.1, 11.4, 14.7, 18.0, and 21.3 DPS to bosses.
 const BOSS_DMG_MULT = 0.245
+const BOSS_POWER_BASE = 0.65
+const BOSS_POWER_STEP = 0.45
 
 export class LaserBeam {
   private g: Graphics
@@ -88,8 +91,9 @@ export class LaserBeam {
 
     if (boss?.active) {
       if (Math.abs(boss.sprite.x - playerX) < boss.sprite.width * 0.5 + 4) {
+        const bossPowerMult = BOSS_POWER_BASE + laserPower * BOSS_POWER_STEP
         const died = boss.hit(
-          dmg * BOSS_DMG_MULT,
+          dmg * BOSS_DMG_MULT * bossPowerMult,
           playerX,
           boss.sprite.y + boss.sprite.height * 0.2,
         )
