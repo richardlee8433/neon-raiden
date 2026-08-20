@@ -395,6 +395,8 @@ export class GameApp {
         this.gems.spawn(e.sprite.x, e.sprite.y, 1)
         spawnEnemyDrop(this.pickups, e.sprite.x, e.sprite.y)
         e.deactivate()
+      } else {
+        e.flash()
       }
     }
     if (this.boss.active) {

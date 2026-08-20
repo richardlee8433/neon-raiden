@@ -81,6 +81,8 @@ export class LaserBeam {
         spawnEnemyDrop(pickups, e.sprite.x, e.sprite.y)
         screenShake.trigger(1.5)
         e.deactivate()
+      } else {
+        e.flash()
       }
     }
 
